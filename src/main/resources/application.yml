@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: payments
+  profiles:
+    active: dev
+    include: secret
+
