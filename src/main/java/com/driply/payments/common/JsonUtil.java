@@ -17,7 +17,11 @@ public final class JsonUtil {
      * @return ObjectNode로 변환된 객체
      * @throws JsonProcessingException JSON 파싱 중 오류 발생 시 예외 처리
      */
-    public static ObjectNode parseStringToObjectNode(String jsonString) throws JsonProcessingException {
+    public static ObjectNode parseObjectNode(String jsonString) throws JsonProcessingException {
         return (ObjectNode) objectMapper.readTree(jsonString);
+    }
+
+    public static ObjectNode parseObjectNode(Object object) throws JsonProcessingException {
+        return (ObjectNode) objectMapper.readTree(objectMapper.writeValueAsString(object));
     }
 }
