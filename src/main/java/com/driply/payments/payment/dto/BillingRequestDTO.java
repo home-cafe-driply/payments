@@ -9,8 +9,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentRequestDTO {
-    private String paymentKey;
-    private String orderId;
+public class BillingRequestDTO {
+    private String customerKey;
     private Double amount;
+    private String orderId;
+    private String orderName;
+    private String customerEmail;
+    private String customerName;
 }

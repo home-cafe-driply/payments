@@ -7,10 +7,11 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class PaymentRequestDTO {
+@NoArgsConstructor
+public class BrandpayRequestDTO {
     private String paymentKey;
     private String orderId;
     private Double amount;
+    private String customerKey;
 }

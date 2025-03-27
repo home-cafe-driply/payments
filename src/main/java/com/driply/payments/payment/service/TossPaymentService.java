@@ -1,6 +1,10 @@
 package com.driply.payments.payment.service;
 
 import com.driply.payments.common.JsonUtil;
+import com.driply.payments.payment.dto.BillingKeyRequestDTO;
+import com.driply.payments.payment.dto.BillingRequestDTO;
+import com.driply.payments.payment.dto.BrandpayRequestDTO;
+import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.repository.PaymentRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,7 +46,7 @@ public class TossPaymentService implements PaymentService {
     /**
      * 토스페이먼츠사 api를 통해 결제 승인 요청을 보냅니다.
      * @param requestUri 위젯결제 혹은 일반결제인지 판단하기 위해 사용됩니다.
-     * @param jsonBody paymentKey, orderId, amount 값을 포함해야 합니다.
+     * @param requestDTO paymentKey, orderId, amount 값을 포함해야 합니다.
      * @return 결제 승인 성공
      *         - 결제 정보를 담고 있는 Payment 객체가 돌아옵니다.
      *         - 결제 한 건의 결제 상태, 결제 취소 기록, 매출 전표, 현금영수증 정보 등을 포함합니다.
@@ -52,16 +56,12 @@ public class TossPaymentService implements PaymentService {
      * @throws IOException
      */
     @Override
-    public Map<String, Object> processPayment(String requestUri, String jsonBody) throws IOException {
-        logger.info("Processing request URI: {}", requestUri);
-        logger.info("Processing request JSON body: {}", jsonBody);
+    public Map<String, Object> processPayment(String requestUri, PaymentRequestDTO requestDTO) throws IOException {
         String secretKey = requestUri.contains("/confirm/payment") ? API_SECRET_KEY : WIDGET_SECRET_KEY;
-        ObjectNode requestData = JsonUtil.parseStringToObjectNode(jsonBody);
-        logger.info("Request data: {}", requestData);
-        Map<String, Object> response = sendRequest(requestData, secretKey,
-                "https://api.tosspayments.com/v1/payments/confirm");
+        ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
+        Map<String, Object> response =
+                sendRequest(requestData, secretKey, "https://api.tosspayments.com/v1/payments/confirm");
 
-        logger.info("Response from Toss Payment Service: {}", response);
         // TODO: payment 응답 결과 DB에 저장
         return response;
     }
@@ -88,7 +88,7 @@ public class TossPaymentService implements PaymentService {
 
     /**
      * 빌링키를 통해 토스페이먼츠 api 서버로 결제 승인 요청을 보냅니다. 요청 uri에 빌링키를 포함해야 합니다.
-     * @param jsonBody billingKey, amount, customerKey, orderId, orderName를 포함해야 합니다.
+     * @param requestDTO billingKey, amount, customerKey, orderId, orderName를 포함해야 합니다.
      * @return 정기결제 성공
      *         - 카드 자동결제 승인에 성공하면 card 필드에 값이 있는 Payment 객체가 돌아옵니다.
      *         정기결제 실패
@@ -96,8 +96,8 @@ public class TossPaymentService implements PaymentService {
      * @throws IOException
      */
     @Override
-    public Map<String, Object> confirmBilling(String jsonBody) throws IOException {
-        ObjectNode requestData = JsonUtil.parseStringToObjectNode(jsonBody);
+    public Map<String, Object> confirmBilling(BillingRequestDTO requestDTO) throws IOException {
+        ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
         String billingKey = billingKeyMap.get(requestData.get(CUSTOMER_KEY).toString()).toString();
         Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY,
                 "https://api.tosspayments.com/v1/billing/" + billingKey);
@@ -106,7 +106,7 @@ public class TossPaymentService implements PaymentService {
 
     /**
      * 토스페이먼츠 api 서버로 빌링키 발급 요청을 보냅니다.
-     * @param jsonBody authKey, customerKey를 포함해야 합니다.
+     * @param requestDTO authKey, customerKey를 포함해야 합니다.
      * @return 빌링키 발급 성공
      *         - 등록된 카드 정보와 발급된 billingKey가 포함되어 있는 Billing 객체가 돌아옵니다.
      *         빌링키 발급 실패
@@ -114,9 +114,8 @@ public class TossPaymentService implements PaymentService {
      * @throws IOException
      */
     @Override
-    public Map<String, Object> issueBillingKey(String jsonBody) throws IOException {
-        logger.info("Issue request JSON body: {}", jsonBody);
-        ObjectNode requestData = JsonUtil.parseStringToObjectNode(jsonBody);
+    public Map<String, Object> issueBillingKey(BillingKeyRequestDTO requestDTO) throws IOException {
+        ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
         Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY,
                 "https://api.tosspayments.com/v1/billing/authorizations/issue");
         logger.info("Response from Toss Payment Service: {}", response);
@@ -129,14 +128,14 @@ public class TossPaymentService implements PaymentService {
     /**
      * 토스페이먼츠 api 서버로 브랜드페이 결제 승인 요청을 보냅니다.
      * paymentKey에 해당하는 결제를 인증하고 승인합니다. Basic 인증 방식을 사용합니다.
-     * @param jsonBody paymentKey, amount, customerKey, orderId 를 포함해야 합니다.
+     * @param requestDTO paymentKey, amount, customerKey, orderId 를 포함해야 합니다.
      * @return 결제 승인에 성공했다면 결제 정보를 담고 있는 Payment 객체가 돌아옵니다.
      *         결제 승인에 실패했다면 HTTP 상태 코드와 함께 에러 객체가 돌아옵니다.
      * @throws IOException
      */
     @Override
-    public Map<String, Object> confirmBrandpay(String jsonBody) throws IOException {
-        ObjectNode requestData = JsonUtil.parseStringToObjectNode(jsonBody);
+    public Map<String, Object> confirmBrandpay(BrandpayRequestDTO requestDTO) throws IOException {
+        ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
         String url = "https://api.tosspayments.com/v1/brandpay/payments/confirm";
         Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY, url);
         return response;
