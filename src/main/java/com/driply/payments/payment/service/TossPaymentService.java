@@ -6,46 +6,25 @@ import com.driply.payments.payment.dto.BillingRequestDTO;
 import com.driply.payments.payment.dto.BrandpayRequestDTO;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.repository.PaymentRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.driply.payments.payment.strategy.PaymentStrategy;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @PropertySource("classpath:application-secret.yml")
 public class TossPaymentService implements PaymentService {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Map<String, Object> billingKeyMap = new HashMap<>();
+    private final PaymentStrategy tossPaymentStrategy;
     private final PaymentRepository paymentRepository;
-    private static final String CUSTOMER_KEY = "customerKey";
-    @Value("${toss.payments.test.widget-secret-key}")
-    private String WIDGET_SECRET_KEY;
-    @Value("${toss.payments.api-secret-key}")
-    private String API_SECRET_KEY;
 
     /**
-     * 토스페이먼츠사 api를 통해 결제 승인 요청을 보냅니다.
-     * @param requestUri 위젯결제 혹은 일반결제인지 판단하기 위해 사용됩니다.
+     * 토스페이먼츠사 api를 통해 결제 승인 요청을 보내기 위해 데이터 전처리하여 sendPaymentRequest() 메소드를 호출합니다.
+     * @param requestUri 요청 uri. 위젯결제 혹은 일반결제인지 판단하기 위해 사용됩니다.
      * @param requestDTO paymentKey, orderId, amount 값을 포함해야 합니다.
      * @return 결제 승인 성공
      *         - 결제 정보를 담고 있는 Payment 객체가 돌아옵니다.
@@ -57,11 +36,8 @@ public class TossPaymentService implements PaymentService {
      */
     @Override
     public Map<String, Object> processPayment(String requestUri, PaymentRequestDTO requestDTO) throws IOException {
-        String secretKey = requestUri.contains("/confirm/payment") ? API_SECRET_KEY : WIDGET_SECRET_KEY;
         ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
-        Map<String, Object> response =
-                sendRequest(requestData, secretKey, "https://api.tosspayments.com/v1/payments/confirm");
-
+        Map<String, Object> response = tossPaymentStrategy.sendPaymentRequest(requestUri, requestData);
         // TODO: payment 응답 결과 DB에 저장
         return response;
     }
@@ -78,12 +54,8 @@ public class TossPaymentService implements PaymentService {
      */
     @Override
     public Map<String, Object> customerAuthorization(String customerKey, String code) throws IOException {
-        ObjectNode requestData = objectMapper.createObjectNode();
-        requestData.put("grantType", "AuthorizationCode");
-        requestData.put(CUSTOMER_KEY, customerKey);
-        requestData.put("code", code);
-        String url = "https://api.tosspayments.com/v1/brandpay/authorizations/access-token";
-        return sendRequest(requestData, API_SECRET_KEY, url);
+        Map<String, Object> response = tossPaymentStrategy.sendAuthorizationRequest(customerKey, code);
+        return response;
     }
 
     /**
@@ -98,9 +70,7 @@ public class TossPaymentService implements PaymentService {
     @Override
     public Map<String, Object> confirmBilling(BillingRequestDTO requestDTO) throws IOException {
         ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
-        String billingKey = billingKeyMap.get(requestData.get(CUSTOMER_KEY).toString()).toString();
-        Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY,
-                "https://api.tosspayments.com/v1/billing/" + billingKey);
+        Map<String, Object> response = tossPaymentStrategy.sendBillingConfirmRequest(requestData);
         return response;
     }
 
@@ -116,12 +86,7 @@ public class TossPaymentService implements PaymentService {
     @Override
     public Map<String, Object> issueBillingKey(BillingKeyRequestDTO requestDTO) throws IOException {
         ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
-        Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY,
-                "https://api.tosspayments.com/v1/billing/authorizations/issue");
-        logger.info("Response from Toss Payment Service: {}", response);
-        if (!response.containsKey("error")) {
-            billingKeyMap.put(requestData.get(CUSTOMER_KEY).toString(), response.get("billingKey"));
-        }
+        Map<String, Object> response = tossPaymentStrategy.sendBillingKeyRequest(requestData);
         return response;
     }
 
@@ -136,50 +101,7 @@ public class TossPaymentService implements PaymentService {
     @Override
     public Map<String, Object> confirmBrandpay(BrandpayRequestDTO requestDTO) throws IOException {
         ObjectNode requestData = JsonUtil.parseObjectNode(requestDTO);
-        String url = "https://api.tosspayments.com/v1/brandpay/payments/confirm";
-        Map<String, Object> response = sendRequest(requestData, API_SECRET_KEY, url);
+        Map<String, Object> response = tossPaymentStrategy.sendBrandpayRequest(requestData);
         return response;
-    }
-
-    /**
-     * 토스페이먼츠 api로 요청을 보내기 위해 사용됩니다.
-     * @param requestData 요청을 보낼때 함께 보낼 데이터 입니다.
-     * @param secretKey api 서버 인증에 사용되는 비밀키를 포함해야 합니다.
-     * @param urlString 요청 엔드포인트
-     * @return 응답 결과를 반환합니다.
-     * @throws IOException
-     */
-    private Map<String, Object> sendRequest(ObjectNode requestData, String secretKey, String urlString) throws IOException {
-        HttpURLConnection connection = createConnection(secretKey, urlString);
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(requestData.toString().getBytes(StandardCharsets.UTF_8));
-        }
-
-        try (InputStream responseStream = connection.getResponseCode() == 200 ? connection.getInputStream() : connection.getErrorStream();
-             Reader reader = new InputStreamReader(responseStream, StandardCharsets.UTF_8)) {
-            return objectMapper.readValue(reader, new TypeReference<>() {});
-        } catch (Exception e) {
-            logger.error("Error reading response", e);
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Error reading response");
-            return errorResponse;
-        }
-    }
-
-    /**
-     * 요청을 보내기 위한 HttpURLConnection 객체를 생성합니다.
-     * @param secretKey 토스페이먼츠 api 요청시에 필요한 api key 값을 포함해야 합니다.
-     * @param urlString 엔드포인트
-     * @return 인증정보를 포함한 connection 객체를 반환합니다.
-     * @throws IOException
-     */
-    private HttpURLConnection createConnection(String secretKey, String urlString) throws IOException {
-        URL url = URI.create(urlString).toURL();
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8)));
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-        return connection;
     }
 }
