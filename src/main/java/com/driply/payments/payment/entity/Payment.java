@@ -57,4 +57,14 @@ public class Payment extends BaseEntity {
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> extraData;
+
+    public void approve(String paymentMethod) {
+                if (this.status != PaymentStatus.PENDING) {
+                    throw new IllegalStateException("이미 처리된 결제입니다.");
+                }
+                this.paymentMethod = paymentMethod;
+                this.status = PaymentStatus.PAID;
+                this.approvedAt = OffsetDateTime.now();
+
+    }
 }
