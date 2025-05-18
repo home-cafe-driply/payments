@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class JsonUtil {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    public static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * JSON 문자열을 ObjectNode로 변환하는 유틸리티 함수
@@ -17,7 +17,11 @@ public final class JsonUtil {
      * @return ObjectNode로 변환된 객체
      * @throws JsonProcessingException JSON 파싱 중 오류 발생 시 예외 처리
      */
-    public static ObjectNode parseStringToObjectNode(String jsonString) throws JsonProcessingException {
+    public static ObjectNode parseObjectNode(String jsonString) throws JsonProcessingException {
         return (ObjectNode) objectMapper.readTree(jsonString);
+    }
+
+    public static ObjectNode parseObjectNode(Object object) throws JsonProcessingException {
+        return (ObjectNode) objectMapper.readTree(objectMapper.writeValueAsString(object));
     }
 }

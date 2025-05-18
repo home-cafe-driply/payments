@@ -4,6 +4,8 @@ import com.driply.payments.common.BaseEntity;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Type;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
@@ -29,16 +32,22 @@ public class Payment extends BaseEntity {
     private Long paymentId;
 
     @Column(nullable = false)
-    private Long orderId;
+    @Enumerated(EnumType.STRING)
+    private PGType pgType;
 
     @Column(nullable = false)
-    private String paymentProvider;
+    private String orderId;
 
     @Column(nullable = false)
-    private Double totalAmount;
+    private BigDecimal amount;
 
     @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus status;
+
+    private String pgTransactionId;
+
+    private String paymentMethod;
 
     @Column(nullable = false)
     private OffsetDateTime requestedAt;
@@ -47,5 +56,15 @@ public class Payment extends BaseEntity {
 
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private Map<String, Object> responseData;
+    private Map<String, Object> extraData;
+
+    public void approve(String paymentMethod) {
+                if (this.status != PaymentStatus.PENDING) {
+                    throw new IllegalStateException("이미 처리된 결제입니다.");
+                }
+                this.paymentMethod = paymentMethod;
+                this.status = PaymentStatus.PAID;
+                this.approvedAt = OffsetDateTime.now();
+
+    }
 }
