@@ -1,14 +1,11 @@
 package com.driply.payments.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.CacheControl;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import java.util.concurrent.TimeUnit;
+import org.springframework.web.reactive.config.CorsRegistry;
+import org.springframework.web.reactive.config.WebFluxConfigurer;
 
 @Configuration
-public class MvcConfiguration implements WebMvcConfigurer {
+public class WebFluxConfig implements WebFluxConfigurer {
 
     @Override
     public void addResourceHandlers(final ResourceHandlerRegistry registry) {

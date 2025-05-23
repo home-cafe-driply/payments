@@ -1,17 +1,21 @@
 package com.driply.payments.payment.controller;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.reactive.result.view.Rendering;
+import org.springframework.web.reactive.result.view.View;
+import org.springframework.web.reactive.result.view.ViewResolver;
+import org.springframework.web.server.ServerWebExchange;
 
 import com.driply.payments.payment.converter.PaymentRequestConverterFactory;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
@@ -19,8 +23,8 @@ import com.driply.payments.payment.dto.PaymentResponseDTO;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.service.PaymentService;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @Controller
 //@RestController
@@ -28,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PaymentController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final ViewResolver viewResolver;
     private final PaymentService paymentService;
     private final PaymentRequestConverterFactory converterFactory;
 
@@ -45,7 +50,7 @@ public class PaymentController {
         return ResponseEntity.status(response.containsKey("error") ? 400 : 200).body(response);
     }
 
-    @GetMapping(value = "/{paymentId}")
+    @GetMapping(value = "/payment/{paymentId}")
     public ResponseEntity<PaymentResponseDTO> getPayment(@PathVariable Long paymentId) {
         Payment payment = paymentService.getPayment(paymentId);
 
@@ -62,21 +67,21 @@ public class PaymentController {
      * 여기에는 브랜드페이 결제, 일반결제를 위한 템플릿과 연결되어 있습니다.
      */
     @GetMapping(value = "/")
-    public String index() {
-        return "/widget/checkout";
+    public Mono<View> index() {
+        return viewResolver.resolveViewName("/widget/checkout", Locale.getDefault());
     }
 
     /**
      * 요청 실패 결과를 처리합니다.
      *
-     * @param request 요청 정보를 담고 있습니다.
-     * @param model   실패에 대한 정보를 담을 수 있는 모델 객체입니다.
+     * @param exchange
      * @return 실패 코드와 메시지를 모델에 포함하여 실패 템플릿을 반환합니다.
      */
     @GetMapping(value = "/fail")
-    public String failPayment(HttpServletRequest request, Model model) {
-        model.addAttribute("code", request.getParameter("code"));
-        model.addAttribute("message", request.getParameter("message"));
-        return "/fail";
+    public Mono<Rendering> failPayment(ServerWebExchange exchange) {
+        return Mono.just(Rendering.view("/fail.html")
+            .modelAttribute("code", exchange.getRequest().getQueryParams().getFirst("code"))
+            .modelAttribute("message", exchange.getRequest().getQueryParams().getFirst("message"))
+            .build());
     }
 }
