@@ -1,8 +1,8 @@
 package com.driply.payments.payment.exception;
 
-import com.driply.payments.payment.entity.PGType;
-
 import java.math.BigDecimal;
+
+import com.driply.payments.payment.entity.PGType;
 
 public class PaymentException extends Exception {
     private final BigDecimal amount; // 결제 금액

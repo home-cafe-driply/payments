@@ -1,11 +1,11 @@
 package com.driply.payments.payment.gateway;
 
+import java.util.Map;
+
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.entity.PaymentError;
 import com.driply.payments.payment.entity.PaymentStatus;
 import com.driply.payments.payment.exception.PaymentException;
-
-import java.util.Map;
 
 public interface PaymentGateway {
     // 결제 실행
