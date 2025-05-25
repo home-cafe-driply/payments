@@ -1,6 +1,13 @@
 package com.driply.payments.payment.entity;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.Map;
+
+import org.hibernate.annotations.Type;
+
 import com.driply.payments.common.BaseEntity;
+
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,15 +17,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.Type;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.Map;
 
 @Entity
 @Getter
@@ -57,6 +60,9 @@ public class Payment extends BaseEntity {
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> extraData;
+
+    @Version
+    private Long version;
 
     public void approve(String paymentMethod) {
                 if (this.status != PaymentStatus.PENDING) {

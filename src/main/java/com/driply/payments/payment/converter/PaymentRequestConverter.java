@@ -1,8 +1,8 @@
 package com.driply.payments.payment.converter;
 
-import com.driply.payments.payment.dto.PaymentRequestDTO;
-
 import java.util.Map;
+
+import com.driply.payments.payment.dto.PaymentRequestDTO;
 
 public interface PaymentRequestConverter<T extends PaymentRequestDTO> {
     /**

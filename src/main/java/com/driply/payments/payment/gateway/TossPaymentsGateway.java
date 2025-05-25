@@ -1,20 +1,5 @@
 package com.driply.payments.payment.gateway;
 
-import com.driply.payments.common.JsonUtil;
-import com.driply.payments.payment.dto.PaymentRequestDTO;
-import com.driply.payments.payment.entity.PGType;
-import com.driply.payments.payment.entity.PaymentError;
-import com.driply.payments.payment.entity.PaymentStatus;
-import com.driply.payments.payment.exception.PaymentException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -28,6 +13,23 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.driply.payments.common.JsonUtil;
+import com.driply.payments.payment.dto.PaymentRequestDTO;
+import com.driply.payments.payment.entity.PGType;
+import com.driply.payments.payment.entity.PaymentError;
+import com.driply.payments.payment.entity.PaymentStatus;
+import com.driply.payments.payment.exception.PaymentException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
