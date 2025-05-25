@@ -61,6 +61,9 @@ public class Payment extends BaseEntity {
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> extraData;
 
+    @Version
+    private Long version;
+
     public void approve(String paymentMethod) {
                 if (this.status != PaymentStatus.PENDING) {
                     throw new IllegalStateException("이미 처리된 결제입니다.");
