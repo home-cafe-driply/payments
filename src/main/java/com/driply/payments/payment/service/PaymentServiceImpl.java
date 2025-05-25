@@ -72,4 +72,20 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new NoSuchElementException("결제 정보를 찾을 수 없습니다: " + paymentId));
     }
+
+    /**
+     * PENDING 상태의 결제 객체를 생성합니다.
+     * @param requestDTO 결제 요청에 대한 메타 데이터를 포함합니다.
+     * @return PENDING 상태의 Payment 객체를 반환합니다.
+     */
+    private Payment createPendingPayment(PaymentRequestDTO requestDTO) {
+        return Payment.builder()
+            .pgType(PGType.valueOf(requestDTO.getPgType()))
+            .orderId(requestDTO.getOrderId())
+            .amount(requestDTO.getAmount())
+            .status(PaymentStatus.PENDING)
+            .extraData(requestDTO.getModuleSpecificData())
+            .requestedAt(OffsetDateTime.now())
+            .build();
+    }
 }
