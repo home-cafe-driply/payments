@@ -1,6 +1,5 @@
 package com.driply.payments.payment.controller;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.result.view.ViewResolver;
 
@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @RestController
-//@RequestMapping("/api/v1/payment")
+@RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -45,14 +45,15 @@ public class PaymentController {
         return Mono.just(ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response));
     }
 
-    @GetMapping(value = "/payment/{paymentId}")
-    public ResponseEntity<PaymentResponseDTO> getPayment(@PathVariable Long paymentId) {
+    @GetMapping("/{paymentId}")
     public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
         Payment payment = paymentService.getPayment(paymentId);
 
-        return ResponseEntity.ok(
-                PaymentResponseDTO.builder()
-                        .paymentId(paymentId)
-                        .build());
+        return Mono.just(ResponseEntity.ok(
+            PaymentResponseDTO.builder()
+                .paymentId(payment.getPaymentId())
+                .build())
+        );
+    }
     }
 }
