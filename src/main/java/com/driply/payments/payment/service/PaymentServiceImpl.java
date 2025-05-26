@@ -3,6 +3,8 @@ package com.driply.payments.payment.service;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.driply.payments.payment.dto.PaymentRequestDTO;
+import com.driply.payments.payment.dto.PaymentResponseDTO;
 import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.entity.PaymentStatus;
@@ -25,6 +28,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final PaymentGatewayFactory paymentGatewayFactory;
     private final PaymentRepository paymentRepository;
+    private final ExecutorService paymentExecutor = Executors.newFixedThreadPool(20);
 
     /**
      * 토스페이먼츠사 api를 통해 결제 승인 요청을 보내기 위해 데이터 전처리하여 sendPaymentRequest() 메소드를 호출합니다.
@@ -43,17 +47,7 @@ public class PaymentServiceImpl implements PaymentService {
         logger.info("payment processing: {}", requestDTO);
         Map<String, Object> response = null;
         try {
-            Payment payment = paymentRepository.save(
-                    //TODO: InvalidPGTypeException 예외 처리
-                    Payment.builder()
-                            .pgType(PGType.valueOf(requestDTO.getPgType()))
-                            .orderId(requestDTO.getOrderId())
-                            .amount(requestDTO.getAmount())
-                            .status(PaymentStatus.PENDING)
-                            .requestedAt(OffsetDateTime.now())
-                            .extraData(requestDTO.getModuleSpecificData())
-                            .build()
-            );
+            Payment payment = paymentRepository.saveAndFlush(createPendingPayment(requestDTO));
             PaymentGateway paymentGateway = paymentGatewayFactory.getGateway(requestDTO.getPgType());
 
             Long paymentId = payment.getPaymentId();
@@ -64,6 +58,39 @@ public class PaymentServiceImpl implements PaymentService {
             logger.error("Payment failed", e);
         }
         return response;
+    }
+
+    /**
+     * 결제 승인 프로세스를 비동기로 처리합니다.
+     * @param requestDTO 결제 요청에 필요한 메타 데이터를 포함합니다.
+     * @return paymentId(접수된 결제 엔티티의 pk), status(PENDING 상태의 결제 엔티티 생성), message(결제 접수 응답 메시지), isSuccess(결제 접수 성공 여부)
+     */
+    @Override
+    public PaymentResponseDTO processPaymentAsync(PaymentRequestDTO requestDTO) {
+        Payment payment = createPendingPayment(requestDTO);
+        Payment savedPayment = paymentRepository.saveAndFlush(payment);
+        PaymentGateway paymentGateway = paymentGatewayFactory.getGateway(requestDTO.getPgType());
+        Long paymentId = savedPayment.getPaymentId();
+
+        try {
+            paymentGateway.processPayment(requestDTO, paymentId);
+
+            return PaymentResponseDTO.builder()
+                .paymentId(savedPayment.getPaymentId())
+                .status(savedPayment.getStatus())
+                .success(true)
+                .message("결제 요청이 접수되었습니다.")
+                .build();
+        } catch (RuntimeException e) {
+            logger.error("비동기 결제 처리 중 예외 발생", e);
+
+            return PaymentResponseDTO.builder()
+                .paymentId(null)
+                .status(PaymentStatus.FAILED)
+                .success(false)
+                .message(e.getMessage())
+                .build();
+        }
     }
 
     @Override

@@ -1,22 +1,27 @@
 package com.driply.payments.payment.gateway;
 
-import com.driply.payments.payment.entity.PGType;
+import java.util.List;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
+import com.driply.payments.payment.entity.PGType;
 
 @SpringBootTest
 class PaymentGatewayFactoryTest {
 
     private PaymentGatewayFactory paymentGatewayFactory;
+    private WebClient tossWebClient = WebClient.builder()
+        .baseUrl("https://api.tosspayments.com")
+        .build();
 
     @BeforeEach
     void setUp() {
-        List<PaymentGateway> gateways = List.of(new TossPaymentsGateway());
+        List<PaymentGateway> gateways = List.of(new TossPaymentsGateway(tossWebClient));
         paymentGatewayFactory = new PaymentGatewayFactory(gateways);
     }
 

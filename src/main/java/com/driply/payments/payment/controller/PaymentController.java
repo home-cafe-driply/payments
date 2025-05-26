@@ -20,6 +20,7 @@ import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @RestController
 //@RequestMapping("/api/v1/payment")
@@ -37,15 +38,16 @@ public class PaymentController {
      * @return 결제사의 응답 결과를 바탕으로 200(결제 승인 완료) 혹은 400(결제 승인 실패) status code를 포함한 응답을 반화합니다.
      */
     @PostMapping(value = {"/confirm/widget", "/confirm/payment"})
-    public ResponseEntity<Map<String, Object>> confirmPayment(@RequestBody Map<String, Object> requestBody) throws IOException {
+    public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
         logger.info("request body: {}", requestBody);
         PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
-        Map<String, Object> response = paymentService.processPayment(requestDTO);
-        return ResponseEntity.status(response.containsKey("error") ? 400 : 200).body(response);
+        PaymentResponseDTO response = paymentService.processPaymentAsync(requestDTO);
+        return Mono.just(ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response));
     }
 
     @GetMapping(value = "/payment/{paymentId}")
     public ResponseEntity<PaymentResponseDTO> getPayment(@PathVariable Long paymentId) {
+    public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
         Payment payment = paymentService.getPayment(paymentId);
 
         return ResponseEntity.ok(
