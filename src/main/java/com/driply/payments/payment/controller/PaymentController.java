@@ -41,8 +41,8 @@ public class PaymentController {
     public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
         logger.info("request body: {}", requestBody);
         PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
-        PaymentResponseDTO response = paymentService.processPaymentAsync(requestDTO);
-        return Mono.just(ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response));
+        PaymentResponseDTO responseDTO = paymentService.processPaymentAsync(requestDTO);
+        return Mono.just(ResponseEntity.status(responseDTO.isSuccess() ? 200 : 400).body(responseDTO));
     }
 
     @GetMapping("/{paymentId}")

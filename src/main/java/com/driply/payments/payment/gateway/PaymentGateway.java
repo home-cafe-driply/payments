@@ -1,14 +1,12 @@
 package com.driply.payments.payment.gateway;
 
-import java.util.Map;
-
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.entity.PaymentError;
 import com.driply.payments.payment.entity.PaymentStatus;
 
 public interface PaymentGateway {
     // 결제 실행
-    Map<String, Object> processPayment(PaymentRequestDTO requestDTO, long paymentId);
+    void processPayment(PaymentRequestDTO requestDTO, long paymentId);
 
     // 결제 상태 조회
     PaymentStatus checkStatus(String transactionId);
