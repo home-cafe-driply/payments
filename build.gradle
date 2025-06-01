@@ -53,3 +53,18 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+/**
+ * mockito-core와 의존 관계를 갖는 byte-buddy-agent 라이브러리에서 Java Agent를 동적으로 로딩한다.
+ * Java 21버전에서 Java Agent를 동적으로 로딩하는 것이 앞으로 금지될 것이기 때문에
+ * 테스트 실행 시 명시적으로 Java Agent를 로딩하도록 옵션을 추가하는 코드를 작성했다.
+ */
+test {
+	doFirst {
+		def byteBuddyAgent = configurations.testRuntimeClasspath.find { it.name.contains('byte-buddy-agent') }
+		if (byteBuddyAgent == null) {
+			throw new GradleException("byte-buddy-agent jar not found in testRuntimeClasspath")
+		}
+		jvmArgs "-javaagent:${byteBuddyAgent.absolutePath}"
+	}
+}
