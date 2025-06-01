@@ -47,6 +47,8 @@ public class TossPaymentsGateway implements PaymentGateway {
      */
     @Override
     public void processPayment(PaymentRequestDTO requestDTO, long paymentId) {
+        validatePaymentRequest(requestDTO);
+
         try {
             tossWebClient.post()
                 .uri(paymentUrl)
@@ -101,5 +103,31 @@ public class TossPaymentsGateway implements PaymentGateway {
      */
     private String createAuthHeader(String secretKey) {
         return Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * 결제 요청 데이터의 유효성을 검증합니다.
+     * <p>
+     * 다음 조건을 검사합니다:
+     * <ul>
+     *   <li>요청 객체가 null이 아닌지 확인</li>
+     *   <li>주문 ID(orderId)가 null이 아니고, 공백이 아닌지 확인</li>
+     *   <li>결제 금액(amount)이 null이 아니고, 0보다 큰지 확인</li>
+     * </ul>
+     * 유효하지 않은 경우 {@link IllegalArgumentException} 예외를 발생시킵니다.
+     *
+     * @param requestDTO 검증할 결제 요청 데이터 객체
+     * @throws IllegalArgumentException 요청 데이터가 null이거나, 주문 ID 또는 결제 금액이 유효하지 않은 경우
+     */
+    private void validatePaymentRequest(PaymentRequestDTO requestDTO) {
+        if (requestDTO == null) {
+            throw new IllegalArgumentException("결제 요청 데이터가 null입니다.");
+        }
+        if (requestDTO.getOrderId() == null || requestDTO.getOrderId().trim().isEmpty()) {
+            throw new IllegalArgumentException("주문 ID가 필요합니다.");
+        }
+        if (requestDTO.getAmount() == null || requestDTO.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("결제 금액이 유효하지 않습니다.");
+        }
     }
 }
