@@ -11,12 +11,12 @@ import reactor.core.publisher.Mono;
 public class PaymentViewController {
 	@GetMapping("/")
 	public Mono<String> index() {
-		return Mono.just("widget/checkout");
+		return Mono.just("payment/checkout");
 	}
 
-	@GetMapping("/success")
+	@GetMapping("/api/v1/payment/success")
 	public Mono<Rendering> successPayment(ServerWebExchange exchange) {
-		return Mono.just(Rendering.view("/widget/success.html")
+		return Mono.just(Rendering.view("/payment/success.html")
 			.modelAttribute("paymentType", exchange.getRequest().getQueryParams().getFirst("paymentType"))
 			.modelAttribute("orderId", exchange.getRequest().getQueryParams().getFirst("orderId"))
 			.modelAttribute("paymentKey", exchange.getRequest().getQueryParams().getFirst("paymentKey"))
@@ -24,7 +24,7 @@ public class PaymentViewController {
 			.build());
 	}
 	
-	@GetMapping("/fail")
+	@GetMapping("/api/v1/payment/fail")
 	public Mono<Rendering> failPayment(ServerWebExchange exchange) {
 		return Mono.just(Rendering.view("/fail.html")
 			.modelAttribute("code", exchange.getRequest().getQueryParams().getFirst("code"))

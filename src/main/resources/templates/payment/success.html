@@ -12,7 +12,7 @@
 <body>
 <div class="box_section" style="width: 600px">
     <img width="100px" src="https://static.toss.im/illusts/check-blue-spot-ending-frame.png" />
-    <h2>결제를 완료했어요</h2>
+    <h2>결제가 접수되었어요</h2>
 
     <div class="p-grid typography--p" style="margin-top: 50px">
         <div class="p-grid-col text--left"><b>결제금액</b></div>
@@ -50,7 +50,7 @@
         amount: urlParams.get("amount"),
       };
 
-      const response = await fetch("/confirm/payment", {
+      const response = await fetch("/api/v1/payment/confirm/payment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +74,7 @@
       })
       .catch((err) => {
         // TODO: 결제 승인에 실패했을 경우 UI 처리 로직을 구현하세요.
-        window.location.href = `/fail.html?message=${err.message}&code=${err.code}`;
+        window.location.href = `/api/v1/payment/fail?message=${err.message}&code=${err.code}`;
       });
 
     const paymentKeyElement = document.getElementById("paymentKey");

@@ -1,6 +1,5 @@
 package com.driply.payments.payment.controller;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.result.view.ViewResolver;
 
@@ -20,9 +20,10 @@ import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @RestController
-//@RequestMapping("/api/v1/payment")
+@RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -37,20 +38,21 @@ public class PaymentController {
      * @return 결제사의 응답 결과를 바탕으로 200(결제 승인 완료) 혹은 400(결제 승인 실패) status code를 포함한 응답을 반화합니다.
      */
     @PostMapping(value = {"/confirm/widget", "/confirm/payment"})
-    public ResponseEntity<Map<String, Object>> confirmPayment(@RequestBody Map<String, Object> requestBody) throws IOException {
+    public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
         logger.info("request body: {}", requestBody);
         PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
-        Map<String, Object> response = paymentService.processPayment(requestDTO);
-        return ResponseEntity.status(response.containsKey("error") ? 400 : 200).body(response);
+        PaymentResponseDTO responseDTO = paymentService.processPaymentAsync(requestDTO);
+        return Mono.just(ResponseEntity.status(responseDTO.isSuccess() ? 200 : 400).body(responseDTO));
     }
 
-    @GetMapping(value = "/payment/{paymentId}")
-    public ResponseEntity<PaymentResponseDTO> getPayment(@PathVariable Long paymentId) {
+    @GetMapping("/{paymentId}")
+    public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
         Payment payment = paymentService.getPayment(paymentId);
 
-        return ResponseEntity.ok(
-                PaymentResponseDTO.builder()
-                        .paymentId(paymentId)
-                        .build());
+        return Mono.just(ResponseEntity.ok(
+            PaymentResponseDTO.builder()
+                .paymentId(payment.getPaymentId())
+                .build())
+        );
     }
 }
