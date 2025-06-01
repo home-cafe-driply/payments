@@ -1,6 +1,7 @@
 package com.driply.payments.payment.gateway;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 
 import org.slf4j.Logger;
@@ -9,20 +10,27 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.driply.payments.common.JsonUtil;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.PaymentError;
 import com.driply.payments.payment.entity.PaymentStatus;
+import com.driply.payments.payment.exception.TossApiException;
+import com.driply.payments.payment.exception.TossConnectionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
 public class TossPaymentsGateway implements PaymentGateway {
     private static final ObjectMapper objectMapper = JsonUtil.objectMapper;
+    private static final String PAYMENT_CONFIRM_URI = "/v1/payments/confirm";
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String AUTH_PREFIX = "Basic ";
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final WebClient tossWebClient;
@@ -31,47 +39,33 @@ public class TossPaymentsGateway implements PaymentGateway {
     private String WIDGET_SECRET_KEY;
     @Value("${toss.payments.api-secret-key}")
     private String API_SECRET_KEY;
-    @Value("${toss.payments.payment.req.url}")
-    private String paymentUrl;
+
 
     /**
-     * 결제 요청을 비동기적으로 처리합니다.
+     * 결제 요청을 처리합니다.
      * <p>
-     * 외부 결제 API(Toss 등)에 비동기 POST 요청을 보내고, 결과는 콜백(subscribe)에서 처리합니다.
-     * 성공 시 단순 로깅하며, 실패 시 에러 로그를 남깁니다.
-     * 결제 결과 처리는 별도의 콜백(웹훅 등)에서 수행하는 구조입니다.
+     * 결제 요청 데이터의 유효성을 검증한 뒤, 토스 결제 API로 비동기 결제 요청을 전송합니다.<br>
+     * 요청의 시작, 성공, 실패 시점에 각각 로그를 기록합니다.<br>
+     * 결제 요청 중 예외가 발생하면 에러 로그를 남기고, dropped exception 방지를 위해
+     * subscribe의 onError 콜백을 명시적으로 작성합니다.<br>
+     * <b>실제 결제 결과 및 후속 처리는 토스에서 호출하는 콜백(웹훅) 엔드포인트를 통해 별도로 처리됩니다.</b>
      *
-     * @param requestDTO 결제 요청 데이터 DTO
-     * @param paymentId  결제 식별자(로깅 및 추적용)
-     * @throws RuntimeException 결제 요청 초기화에 실패한 경우
+     * @param requestDTO 결제 요청 데이터 객체
+     * @param paymentId 결제 트랜잭션 식별자
+     * @throws IllegalArgumentException 결제 요청 데이터가 유효하지 않은 경우
      */
     @Override
     public void processPayment(PaymentRequestDTO requestDTO, long paymentId) {
         validatePaymentRequest(requestDTO);
 
-        try {
-            tossWebClient.post()
-                .uri(paymentUrl)
-                .header("Authorization", "Basic " + createAuthHeader(API_SECRET_KEY))
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestDTO)
-                .retrieve()
-                .bodyToMono(String.class)
-                .subscribe(
-                    result -> {
-                        logger.info("결제 요청 성공: paymentId={}", paymentId);
-                    },
-                    error -> {
-                        logger.error("결제 요청 실패: paymentId={}", paymentId, error);
-                    }
-                );
-
-            logger.info("결제 요청 시작됨: paymentId={}", paymentId);
-
-        } catch (Exception e) {
-            logger.error("결제 요청 초기화 실패: paymentId={}", paymentId, e);
-            throw new RuntimeException("결제 요청을 시작할 수 없습니다.", e);
-        }
+        sendPaymentRequest(requestDTO)
+            .doOnSubscribe(sub -> logger.info("결제 요청 시작됨: paymentId={}", paymentId))
+            .doOnSuccess(response ->
+                logger.info("결제 요청 성공: paymentId={}", paymentId))
+            .doOnError(error ->
+                logger.error("결제 요청 실패: paymentId={}", paymentId, error))
+            .subscribe(response -> {},
+                error -> {});
     }
 
     @Override
@@ -92,6 +86,49 @@ public class TossPaymentsGateway implements PaymentGateway {
     @Override
     public boolean refundPayment(String transactionId) {
         return false;
+    }
+
+    /**
+     * 토스페이먼츠 결제 승인 요청을 비동기적으로 전송합니다.
+     * <p>
+     * WebClient를 사용하여 토스 결제 승인 API에 POST 요청을 보내고,
+     * 10초 내 응답이 없으면 타임아웃 예외를 발생시킵니다.
+     * API 오류 및 네트워크 오류는 {@link #wrapException(Throwable)}을 통해
+     * 커스텀 예외로 변환됩니다.
+     *
+     * @param requestDTO 결제 요청 데이터 DTO
+     * @return 결제 승인 응답을 포함하는 Mono. (응답 본문은 String)
+     *         에러 발생 시 TossApiException 또는 TossConnectionException이 발생합니다.
+     */
+	private Mono<String> sendPaymentRequest(PaymentRequestDTO requestDTO) {
+        return tossWebClient.post()
+            .uri(PAYMENT_CONFIRM_URI)
+            .header(AUTH_HEADER, AUTH_PREFIX + createAuthHeader(API_SECRET_KEY))
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestDTO)
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(10))
+            .onErrorMap(this::wrapException);
+    }
+
+    /**
+     * WebClient 호출 중 발생한 예외를 커스텀 예외로 변환합니다.
+     * <p>
+     * HTTP 오류 응답(WebClientResponseException)은 TossApiException으로,
+     * 그 외 네트워크/시스템 오류는 TossConnectionException으로 변환합니다.
+     *
+     * @param e WebClient 호출 중 발생한 원본 예외
+     * @return TossApiException 또는 TossConnectionException 인스턴스
+     */
+    private Throwable wrapException(Throwable e) {
+        if (e instanceof WebClientResponseException ex) {
+            return new TossApiException(
+                "토스 API 오류: " + ex.getStatusCode(),
+                ex.getResponseBodyAsString()
+            );
+        }
+        return new TossConnectionException("토스 연결 실패: " + e.getMessage(), e);
     }
 
     /**
