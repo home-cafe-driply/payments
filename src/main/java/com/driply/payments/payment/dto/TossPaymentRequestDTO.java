@@ -1,5 +1,6 @@
 package com.driply.payments.payment.dto;
 
+import java.util.Collections;
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
@@ -17,6 +18,9 @@ public class TossPaymentRequestDTO extends PaymentRequestDTO {
 
     @Override
     public Map<String, Object> getModuleSpecificData() {
+        if (paymentKey == null || requestUri == null) {
+            return Collections.emptyMap();
+        }
         return Map.of(
                 "paymentKey", paymentKey,
                 "requestUri", requestUri
