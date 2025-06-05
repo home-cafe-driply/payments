@@ -55,4 +55,15 @@ public class PaymentController {
                 .build())
         );
     }
+
+    @PostMapping("/callback")
+    public Mono<ResponseEntity<PaymentResponseDTO>> callback(@RequestBody Map<String, Object> requestBody) {
+        logger.info("callback request body: {}", requestBody);
+
+        return Mono.just(ResponseEntity.ok().body(
+            PaymentResponseDTO.builder()
+                .message("결제 성공")
+                .success(true)
+            .build()));
+    }
 }
