@@ -4,4 +4,9 @@ spring:
   profiles:
     active: dev
     include: secret
-
+  cloud:
+    stream:
+      bindings:
+        producer-out-0:
+          destination: payment-callback
+          contentType: application/json

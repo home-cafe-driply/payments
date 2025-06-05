@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ public class PaymentController {
     private final ViewResolver viewResolver;
     private final PaymentService paymentService;
     private final PaymentRequestConverterFactory converterFactory;
+    private final StreamBridge streamBridge;
 
     /**
      * 위젯 결제와 일반결제 요청을 처리합니다.
@@ -57,13 +59,14 @@ public class PaymentController {
     }
 
     @PostMapping("/callback")
-    public Mono<ResponseEntity<PaymentResponseDTO>> callback(@RequestBody Map<String, Object> requestBody) {
+    public Mono<ResponseEntity<String>> handleCallback(@RequestBody Map<String, Object> requestBody) {
         logger.info("callback request body: {}", requestBody);
+        boolean sent = streamBridge.send("producer-out-0", requestBody);
 
-        return Mono.just(ResponseEntity.ok().body(
-            PaymentResponseDTO.builder()
-                .message("결제 성공")
-                .success(true)
-            .build()));
+        if (sent) {
+            return Mono.just(ResponseEntity.ok().body("콜백 수신 성공"));
+        } else {
+            return Mono.just(ResponseEntity.status(500).body("콜백 수신 중 에러 발생"));
+        }
     }
 }
