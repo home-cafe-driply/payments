@@ -27,46 +27,46 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private final ViewResolver viewResolver;
-    private final PaymentService paymentService;
-    private final PaymentRequestConverterFactory converterFactory;
-    private final StreamBridge streamBridge;
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final ViewResolver viewResolver;
+	private final PaymentService paymentService;
+	private final PaymentRequestConverterFactory converterFactory;
+	private final StreamBridge streamBridge;
 
-    /**
-     * 위젯 결제와 일반결제 요청을 처리합니다.
-     *
-     * @param requestBody 결제사별로 api 요청에 필요한 데이터를 담고 있습니다.
-     * @return 결제사의 응답 결과를 바탕으로 200(결제 승인 완료) 혹은 400(결제 승인 실패) status code를 포함한 응답을 반화합니다.
-     */
-    @PostMapping(value = {"/confirm/widget", "/confirm/payment"})
-    public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
-        logger.info("request body: {}", requestBody);
-        PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
-        PaymentResponseDTO responseDTO = paymentService.processPaymentAsync(requestDTO);
-        return Mono.just(ResponseEntity.status(responseDTO.isSuccess() ? 200 : 400).body(responseDTO));
-    }
+	/**
+	 * 위젯 결제와 일반결제 요청을 처리합니다.
+	 *
+	 * @param requestBody 결제사별로 api 요청에 필요한 데이터를 담고 있습니다.
+	 * @return 결제사의 응답 결과를 바탕으로 200(결제 승인 완료) 혹은 400(결제 승인 실패) status code를 포함한 응답을 반화합니다.
+	 */
+	@PostMapping(value = {"/confirm/widget", "/confirm/payment"})
+	public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
+		logger.info("request body: {}", requestBody);
+		PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
+		PaymentResponseDTO responseDTO = paymentService.processPaymentAsync(requestDTO);
+		return Mono.just(ResponseEntity.status(responseDTO.isSuccess() ? 200 : 400).body(responseDTO));
+	}
 
-    @GetMapping("/{paymentId}")
-    public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
-        Payment payment = paymentService.getPayment(paymentId);
+	@GetMapping("/{paymentId}")
+	public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
+		Payment payment = paymentService.getPaymentById(paymentId);
 
-        return Mono.just(ResponseEntity.ok(
-            PaymentResponseDTO.builder()
-                .paymentId(payment.getPaymentId())
-                .build())
-        );
-    }
+		return Mono.just(ResponseEntity.ok(
+			PaymentResponseDTO.builder()
+				.paymentId(payment.getPaymentId())
+				.build())
+		);
+	}
 
-    @PostMapping("/callback")
-    public Mono<ResponseEntity<String>> handleCallback(@RequestBody Map<String, Object> requestBody) {
-        logger.info("callback request body: {}", requestBody);
-        boolean sent = streamBridge.send("producer-out-0", requestBody);
+	@PostMapping("/callback")
+	public Mono<ResponseEntity<String>> handleCallback(@RequestBody Map<String, Object> requestBody) {
+		logger.info("callback request body: {}", requestBody);
+		boolean sent = streamBridge.send("producer-out-0", requestBody);
 
-        if (sent) {
-            return Mono.just(ResponseEntity.ok().body("콜백 수신 성공"));
-        } else {
-            return Mono.just(ResponseEntity.status(500).body("콜백 수신 중 에러 발생"));
-        }
-    }
+		if (sent) {
+			return Mono.just(ResponseEntity.ok().body("콜백 수신 성공"));
+		} else {
+			return Mono.just(ResponseEntity.status(500).body("콜백 수신 중 에러 발생"));
+		}
+	}
 }
