@@ -1,7 +1,6 @@
 package com.driply.payments.payment.service;
 
 import java.time.OffsetDateTime;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -62,34 +61,6 @@ public class PaymentServiceImpl implements PaymentService {
 				.message(e.getMessage())
 				.build();
 		}
-	}
-
-	/**
-	 * 토스페이먼츠사 api를 통해 결제 승인 요청을 보내기 위해 데이터 전처리하여 sendPaymentRequest() 메소드를 호출합니다.
-	 *
-	 * @param requestDTO paymentKey, orderId, amount, requestUri 값을 포함해야 합니다.
-	 * @return 결제 승인 성공
-	 * - 결제 정보를 담고 있는 Payment 객체가 돌아옵니다.
-	 * - 결제 한 건의 결제 상태, 결제 취소 기록, 매출 전표, 현금영수증 정보 등을 포함합니다.
-	 * - 객체의 구성은 결제수단(카드, 가상계좌, 간편결제 등)에 따라 조금씩 달라집니다.
-	 * 결제 승인 실패
-	 * - HTTP 상태 코드와 함께 에러 객체가 돌아옵니다.
-	 */
-	@Override
-	@Transactional
-	public Map<String, Object> processPayment(PaymentRequestDTO requestDTO) {
-		logger.info("payment processing: {}", requestDTO);
-		Map<String, Object> response = null;
-		try {
-			Payment payment = paymentRepository.saveAndFlush(createPendingPayment(requestDTO));
-			PaymentGateway paymentGateway = paymentGatewayFactory.getGateway(requestDTO.getPgType());
-
-			Long paymentId = payment.getPaymentId();
-			paymentGateway.processPayment(requestDTO, paymentId);
-		} catch (Exception e) {
-			logger.error("결제 실패", e);
-		}
-		return response;
 	}
 
 	@Override
