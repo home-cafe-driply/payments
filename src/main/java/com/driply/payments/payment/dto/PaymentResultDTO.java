@@ -11,9 +11,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentResponseDTO {
-    private Long paymentId;
-    private PaymentStatus status;
-    private String message;
-    private boolean success;
+public class PaymentResultDTO {
+	private Long paymentId;
+	private PaymentStatus status;
+	private String message;
+	private boolean success;
 }

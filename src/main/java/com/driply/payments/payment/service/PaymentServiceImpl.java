@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.dto.PaymentResponseDTO;
+import com.driply.payments.payment.dto.PaymentResultDTO;
 import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.entity.PaymentStatus;
@@ -36,7 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
 	 * @return paymentId(접수된 결제 엔티티의 pk), status(PENDING 상태의 결제 엔티티 생성), message(결제 접수 응답 메시지), isSuccess(결제 접수 성공 여부)
 	 */
 	@Override
-	public PaymentResponseDTO processPaymentAsync(PaymentRequestDTO requestDTO) {
+	public PaymentResultDTO processPaymentAsync(PaymentRequestDTO requestDTO) {
 		Payment payment = createPendingPayment(requestDTO);
 		Payment savedPayment = paymentRepository.saveAndFlush(payment);
 		PaymentGateway paymentGateway = paymentGatewayFactory.getGateway(requestDTO.getPgType());
@@ -45,7 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
 		try {
 			CompletableFuture.runAsync(() -> paymentGateway.processPayment(requestDTO, paymentId));
 
-			return PaymentResponseDTO.builder()
+			return PaymentResultDTO.builder()
 				.paymentId(savedPayment.getPaymentId())
 				.status(savedPayment.getStatus())
 				.success(true)
@@ -54,7 +55,7 @@ public class PaymentServiceImpl implements PaymentService {
 		} catch (RuntimeException e) {
 			logger.error("비동기 결제 처리 중 예외 발생", e);
 
-			return PaymentResponseDTO.builder()
+			return PaymentResultDTO.builder()
 				.paymentId(null)
 				.status(PaymentStatus.FAILED)
 				.success(false)
