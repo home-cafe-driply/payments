@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.driply.payments.common.JsonUtil;
+import com.driply.payments.payment.dto.PaymentQuery;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
+import com.driply.payments.payment.dto.TossPaymentDetailsDTO;
 import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.PaymentError;
 import com.driply.payments.payment.entity.PaymentStatus;
 import com.driply.payments.payment.exception.TossApiException;
 import com.driply.payments.payment.exception.TossConnectionException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -68,6 +68,22 @@ public class TossPaymentsGateway implements PaymentGateway {
                 error -> {});
     }
 
+	/**
+	 * 결제 키를 이용하여 토스 결제 상세 정보를 조회합니다.
+	 *
+	 * @param query 결제 조회에 필요한 정보를 담고 있는 PaymentQuery 객체
+	 * @return 결제 상세 정보를 포함하는 Mono<TossPaymentDetailsDTO>
+	 */
+	@Override
+	public Mono<TossPaymentDetailsDTO> queryPayment(PaymentQuery query) {
+		String paymentKey = query.getPaymentKey();
+		return tossWebClient.get()
+			.uri("/v1/payments/" + paymentKey)
+			.header(AUTH_HEADER, createAuthHeader(API_SECRET_KEY))
+			.retrieve()
+			.bodyToMono(TossPaymentDetailsDTO.class);
+	}
+
     @Override
     public PaymentStatus checkStatus(String transactionId) {
         return null;
@@ -111,6 +127,7 @@ public class TossPaymentsGateway implements PaymentGateway {
             .timeout(Duration.ofSeconds(10))
             .onErrorMap(this::wrapException);
     }
+			.header(AUTH_HEADER, createAuthHeader(API_SECRET_KEY))
 
     /**
      * WebClient 호출 중 발생한 예외를 커스텀 예외로 변환합니다.
@@ -141,6 +158,7 @@ public class TossPaymentsGateway implements PaymentGateway {
     private String createAuthHeader(String secretKey) {
         return Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
     }
+		return AUTH_PREFIX + Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
 
     /**
      * 결제 요청 데이터의 유효성을 검증합니다.
