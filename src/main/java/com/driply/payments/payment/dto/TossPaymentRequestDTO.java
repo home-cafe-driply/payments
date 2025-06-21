@@ -5,6 +5,7 @@ import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
@@ -12,18 +13,17 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class TossPaymentRequestDTO extends PaymentRequestDTO {
-    private String paymentKey;
-    private String requestUri;
+	private String paymentKey;
 
-    @Override
-    public Map<String, Object> getModuleSpecificData() {
-        if (paymentKey == null || requestUri == null) {
-            return Collections.emptyMap();
-        }
-        return Map.of(
-                "paymentKey", paymentKey,
-                "requestUri", requestUri
-        );
-    }
+	@Override
+	public Map<String, Object> getModuleSpecificData() {
+		if (paymentKey == null) {
+			return Collections.emptyMap();
+		}
+		return Map.of(
+			"paymentKey", paymentKey
+		);
+	}
 }
