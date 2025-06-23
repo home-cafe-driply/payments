@@ -37,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
 	 * @return paymentId(접수된 결제 엔티티의 pk), status(PENDING 상태의 결제 엔티티 생성), message(결제 접수 응답 메시지), isSuccess(결제 접수 성공 여부)
 	 */
 	@Override
+	@Transactional
 	public PaymentResultDTO processPaymentAsync(PaymentRequestDTO requestDTO) {
 		Payment payment = createPendingPayment(requestDTO);
 		Payment savedPayment = paymentRepository.saveAndFlush(payment);
