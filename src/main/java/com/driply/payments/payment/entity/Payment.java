@@ -73,32 +73,33 @@ public class Payment extends BaseEntity {
 		};
 	}
 
-	public void approve(String paymentMethod) {
-		if (this.status != PaymentStatus.PENDING) {
+	public void approve(String pgTransactionId, String paymentMethod, OffsetDateTime approvedAt) {
+		if (!isValidTransition(this.status, PaymentStatus.PAID)) {
 			throw new IllegalStateException("이미 처리된 결제입니다.");
 		}
+		this.pgTransactionId = pgTransactionId;
 		this.paymentMethod = paymentMethod;
 		this.status = PaymentStatus.PAID;
-		this.approvedAt = OffsetDateTime.now();
+		this.approvedAt = approvedAt;
 
 	}
 
 	public void fail() {
-		if (this.status != PaymentStatus.PENDING) {
+		if (!isValidTransition(this.status, PaymentStatus.FAILED)) {
 			throw new IllegalStateException("이미 처리된 결제입니다.");
 		}
 		this.status = PaymentStatus.FAILED;
 	}
 
 	public void cancel() {
-		if (this.status != PaymentStatus.PAID) {
+		if (!isValidTransition(this.status, PaymentStatus.CANCELED)) {
 			throw new IllegalStateException("결제 승인 상태에서만 취소할 수 있습니다.");
 		}
 		this.status = PaymentStatus.CANCELED;
 	}
 
 	public void refund() {
-		if (this.status != PaymentStatus.PAID) {
+		if (!isValidTransition(this.status, PaymentStatus.REFUNDED)) {
 			throw new IllegalStateException("결제 승인 상태에서만 취소할 수 있습니다.");
 		}
 		this.status = PaymentStatus.REFUNDED;
