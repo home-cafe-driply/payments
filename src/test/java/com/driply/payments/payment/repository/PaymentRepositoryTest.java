@@ -41,7 +41,7 @@ class PaymentRepositoryTest {
 	@Test
 	@DisplayName("find by paymentKey")
 	void findByPaymentKey() {
-		Payment testPayment = paymentRepository.findByPaymentKey("test_payment_key");
+		Payment testPayment = paymentRepository.findByPaymentKey("test_payment_key").orElse(null);
 
 		assertNotNull(testPayment);
 		assertEquals("test_payment_key", testPayment.getExtraData().get("paymentKey"));
