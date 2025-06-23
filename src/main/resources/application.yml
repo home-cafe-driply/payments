@@ -6,7 +6,19 @@ spring:
     include: secret
   cloud:
     stream:
+      binders:
+        kafka-binder:
+          type: kafka
+          environment:
+            spring.cloud.stream.kafka.binder.brokers: localhost:9092
       bindings:
+        consumer-in-0:
+          destination: payment-callback
+          group: payment-callback-group
+          binder: kafka-binder
+          contentType: application/json
+
         producer-out-0:
           destination: payment-callback
+          binder: kafka-binder
           contentType: application/json
