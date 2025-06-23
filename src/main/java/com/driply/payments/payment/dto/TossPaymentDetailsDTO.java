@@ -11,7 +11,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @AllArgsConstructor
-public class TossPaymentDetailsDTO {
+public class TossPaymentDetailsDTO extends PaymentDetailsDTO {
 	String mId;
 	String lastTransactionKey;
 	String paymentKey;
@@ -49,4 +49,14 @@ public class TossPaymentDetailsDTO {
 	String method;
 	String version;
 	String metadata;
+
+	@Override
+	public String getTransactionId() {
+		return this.lastTransactionKey;
+	}
+
+	@Override
+	public String getPaymentMethod() {
+		return this.method;
+	}
 }
