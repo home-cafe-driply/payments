@@ -196,9 +196,13 @@ public class PaymentServiceImpl implements PaymentService {
 
 		switch (status) {
 			case "DONE", "PAID" -> {
-				payment.approve(transactionId, paymentMethod, approvedAt);
-				paymentRepository.save(payment);
-				logger.info("결제 상태 업데이트 완료: status={}", payment.getStatus());
+				try {
+					payment.approve(transactionId, paymentMethod, approvedAt);
+					paymentRepository.save(payment);
+					logger.info("결제 상태 업데이트 완료: status={}", payment.getStatus());
+				} catch (IllegalStateException e) {
+					throw new PaymentCallbackException(e.getMessage());
+				}
 			}
 			default -> throw new NoSuchStatusException(status);
 		}
