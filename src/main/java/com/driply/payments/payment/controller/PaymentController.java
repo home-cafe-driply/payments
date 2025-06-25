@@ -2,8 +2,6 @@ package com.driply.payments.payment.controller;
 
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,13 +18,14 @@ import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final PaymentService paymentService;
 	private final PaymentRequestConverterFactory converterFactory;
 	private final StreamBridge streamBridge;
@@ -39,7 +38,7 @@ public class PaymentController {
 	 */
 	@PostMapping(value = {"/confirm/widget", "/confirm/payment"})
 	public Mono<ResponseEntity<PaymentResultDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
-		logger.info("request body: {}", requestBody);
+		log.info("request body: {}", requestBody);
 		PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
 		PaymentResultDTO result = paymentService.processPaymentAsync(requestDTO);
 		return Mono.just(ResponseEntity.status(result.isSuccess() ? 200 : 400).body(result));
@@ -58,7 +57,7 @@ public class PaymentController {
 
 	@PostMapping("/callback")
 	public Mono<ResponseEntity<String>> handleCallback(@RequestBody Map<String, Object> requestBody) {
-		logger.info("callback request body: {}", requestBody);
+		log.info("callback request body: {}", requestBody);
 		boolean sent = streamBridge.send("producer-out-0", requestBody);
 
 		if (sent) {

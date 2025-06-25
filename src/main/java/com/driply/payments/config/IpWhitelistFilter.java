@@ -4,8 +4,6 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -13,6 +11,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 /**
@@ -30,10 +29,9 @@ import reactor.core.publisher.Mono;
  *
  * @author havegrit
  */
+@Slf4j
 @Component
 public class IpWhitelistFilter implements WebFilter {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
 	private static final Set<String> PROXY_IPS = Set.of("");
 
 	private static final Set<String> ALLOWED_IPS = Set.of(
@@ -75,7 +73,7 @@ public class IpWhitelistFilter implements WebFilter {
 		String path = exchange.getRequest().getPath().value();
 		if (PROTECTED_PATHS.contains(path)) {
 			String remoteIp = extractRemoteIp(exchange);
-			logger.info("1차 검증 - 원격 IP: {}", remoteIp);
+			log.info("1차 검증 - 원격 IP: {}", remoteIp);
 
 			// 1차 검증: 직접 접속 IP 허용 여부
 			if (ALLOWED_IPS.contains(remoteIp)) {
@@ -85,14 +83,14 @@ public class IpWhitelistFilter implements WebFilter {
 			// 2차 검증: 프록시 서버인 경우
 			if (PROXY_IPS.contains(remoteIp)) {
 				String xffIp = extractXFFHeader(exchange);
-				logger.info("2차 검증 - XFF IP: {}", xffIp);
+				log.info("2차 검증 - XFF IP: {}", xffIp);
 
 				if (xffIp != null && ALLOWED_IPS.contains(xffIp)) {
 					return chain.filter(exchange);
 				}
 			}
 
-			logger.warn("차단된 접근 - 원격 IP: {}", remoteIp);
+			log.warn("차단된 접근 - 원격 IP: {}", remoteIp);
 			exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
 			return exchange.getResponse().setComplete();
 		}

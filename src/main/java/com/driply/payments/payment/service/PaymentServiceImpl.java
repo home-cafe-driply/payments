@@ -6,8 +6,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +22,12 @@ import com.driply.payments.payment.gateway.PaymentGatewayFactory;
 import com.driply.payments.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final PaymentGatewayFactory paymentGatewayFactory;
 	private final PaymentRepository paymentRepository;
 	private final ExecutorService paymentExecutor = Executors.newFixedThreadPool(20);
@@ -63,7 +62,7 @@ public class PaymentServiceImpl implements PaymentService {
 				.message("결제 요청이 접수되었습니다.")
 				.build();
 		} catch (RuntimeException e) {
-			logger.error("비동기 결제 처리 중 예외 발생", e);
+			log.error("비동기 결제 처리 중 예외 발생", e);
 
 			return PaymentResultDTO.builder()
 				.paymentId(null)
@@ -95,7 +94,7 @@ public class PaymentServiceImpl implements PaymentService {
 				try {
 					payment.approve(transactionId, paymentMethod, approvedAt);
 					paymentRepository.save(payment);
-					logger.info("결제 상태 업데이트 완료: paymentId={}, status={}", payment.getPaymentId(), payment.getStatus());
+					log.info("결제 상태 업데이트 완료: paymentId={}, status={}", payment.getPaymentId(), payment.getStatus());
 				} catch (IllegalStateException e) {
 					throw new PaymentCallbackException(e.getMessage());
 				}
