@@ -2,8 +2,6 @@ package com.driply.payments.payment.controller;
 
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,23 +10,22 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.result.view.ViewResolver;
 
 import com.driply.payments.payment.converter.PaymentRequestConverterFactory;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
-import com.driply.payments.payment.dto.PaymentResponseDTO;
+import com.driply.payments.payment.dto.PaymentResultDTO;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-	private final ViewResolver viewResolver;
 	private final PaymentService paymentService;
 	private final PaymentRequestConverterFactory converterFactory;
 	private final StreamBridge streamBridge;
@@ -40,19 +37,19 @@ public class PaymentController {
 	 * @return 결제사의 응답 결과를 바탕으로 200(결제 승인 완료) 혹은 400(결제 승인 실패) status code를 포함한 응답을 반화합니다.
 	 */
 	@PostMapping(value = {"/confirm/widget", "/confirm/payment"})
-	public Mono<ResponseEntity<PaymentResponseDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
-		logger.info("request body: {}", requestBody);
+	public Mono<ResponseEntity<PaymentResultDTO>> confirmPayment(@RequestBody Map<String, Object> requestBody) {
+		log.info("request body: {}", requestBody);
 		PaymentRequestDTO requestDTO = converterFactory.convert(requestBody);
-		PaymentResponseDTO responseDTO = paymentService.processPaymentAsync(requestDTO);
-		return Mono.just(ResponseEntity.status(responseDTO.isSuccess() ? 200 : 400).body(responseDTO));
+		PaymentResultDTO result = paymentService.processPaymentAsync(requestDTO);
+		return Mono.just(ResponseEntity.status(result.isSuccess() ? 200 : 400).body(result));
 	}
 
 	@GetMapping("/{paymentId}")
-	public Mono<ResponseEntity<PaymentResponseDTO>> getPayment(@PathVariable Long paymentId) {
+	public Mono<ResponseEntity<PaymentResultDTO>> getPayment(@PathVariable Long paymentId) {
 		Payment payment = paymentService.getPaymentById(paymentId);
 
 		return Mono.just(ResponseEntity.ok(
-			PaymentResponseDTO.builder()
+			PaymentResultDTO.builder()
 				.paymentId(payment.getPaymentId())
 				.build())
 		);
@@ -60,7 +57,7 @@ public class PaymentController {
 
 	@PostMapping("/callback")
 	public Mono<ResponseEntity<String>> handleCallback(@RequestBody Map<String, Object> requestBody) {
-		logger.info("callback request body: {}", requestBody);
+		log.info("callback request body: {}", requestBody);
 		boolean sent = streamBridge.send("producer-out-0", requestBody);
 
 		if (sent) {

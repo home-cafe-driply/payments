@@ -66,54 +66,54 @@ class TossPaymentsGatewayTest {
 	void processPayment_success() throws Exception {
 		// 1. MockWebServer가 반환할 가짜 JSON 응답 준비
 		String response = """
-        {
-          "mId": "tvivarepublica",
-          "lastTransactionKey": "txrd_a01jw7wstrkfphftfmm7e8r077t",
-          "paymentKey": "test_payment_key",
-          "orderId": "test_order_id",
-          "orderName": "토스 티셔츠 외 2건",
-          "taxExemptionAmount": 0,
-          "status": "DONE",
-          "requestedAt": "2025-05-27T12:32:37+09:00",
-          "approvedAt": "2025-05-27T12:32:56+09:00",
-          "useEscrow": false,
-          "cultureExpense": false,
-          "card": null,
-          "virtualAccount": null,
-          "transfer": null,
-          "mobilePhone": null,
-          "giftCertificate": null,
-          "cashReceipt": null,
-          "cashReceipts": null,
-          "discount": null,
-          "cancels": null,
-          "secret": "ps_yL0qZ4G1VOvWk9mWxbmM3oWb2MQY",
-          "type": "NORMAL",
-          "easyPay": {
-            "provider": "토스페이",
-            "amount": 50000,
-            "discountAmount": 0
-          },
-          "country": "KR",
-          "failure": null,
-          "isPartialCancelable": true,
-          "receipt": {
-            "url": "https://dashboard.tosspayments.com/receipt/redirection?transactionId=tviva202505271232379tT06&ref=PX"
-          },
-          "checkout": {
-            "url": "https://api.tosspayments.com/v1/payments/tviva202505271232379tT06/checkout"
-          },
-          "currency": "KRW",
-          "totalAmount": 50000,
-          "balanceAmount": 50000,
-          "suppliedAmount": 45455,
-          "vat": 4545,
-          "taxFreeAmount": 0,
-          "method": "간편결제",
-          "version": "2022-11-16",
-          "metadata": null
-        }
-        """;
+			{
+			  "mId": "tvivarepublica",
+			  "lastTransactionKey": "txrd_a01jw7wstrkfphftfmm7e8r077t",
+			  "paymentKey": "test_payment_key",
+			  "orderId": "test_order_id",
+			  "orderName": "토스 티셔츠 외 2건",
+			  "taxExemptionAmount": 0,
+			  "status": "DONE",
+			  "requestedAt": "2025-05-27T12:32:37+09:00",
+			  "approvedAt": "2025-05-27T12:32:56+09:00",
+			  "useEscrow": false,
+			  "cultureExpense": false,
+			  "card": null,
+			  "virtualAccount": null,
+			  "transfer": null,
+			  "mobilePhone": null,
+			  "giftCertificate": null,
+			  "cashReceipt": null,
+			  "cashReceipts": null,
+			  "discount": null,
+			  "cancels": null,
+			  "secret": "ps_yL0qZ4G1VOvWk9mWxbmM3oWb2MQY",
+			  "type": "NORMAL",
+			  "easyPay": {
+			    "provider": "토스페이",
+			    "amount": 50000,
+			    "discountAmount": 0
+			  },
+			  "country": "KR",
+			  "failure": null,
+			  "isPartialCancelable": true,
+			  "receipt": {
+			    "url": "https://dashboard.tosspayments.com/receipt/redirection?transactionId=tviva202505271232379tT06&ref=PX"
+			  },
+			  "checkout": {
+			    "url": "https://api.tosspayments.com/v1/payments/tviva202505271232379tT06/checkout"
+			  },
+			  "currency": "KRW",
+			  "totalAmount": 50000,
+			  "balanceAmount": 50000,
+			  "suppliedAmount": 45455,
+			  "vat": 4545,
+			  "taxFreeAmount": 0,
+			  "method": "간편결제",
+			  "version": "2022-11-16",
+			  "metadata": null
+			}
+			""";
 
 		// 2. MockWebServer에 응답 enqueue (테스트 중 WebClient가 이 응답을 받게 됨)
 		mockWebServer.enqueue(
@@ -151,15 +151,15 @@ class TossPaymentsGatewayTest {
 	void processPayment_failure() throws Exception {
 		// 1. MockWebServer가 반환할 400 응답 준비
 		String response = """
-		{
-		  "version": "2022-11-16",
-		  "traceId": "{traceId}",
-		  "error": {
-			"code": "{CODE}",
-			"message": "{MESSAGE}",
-		  }
-		}
-		""";
+			{
+			  "version": "2022-11-16",
+			  "traceId": "{traceId}",
+			  "error": {
+				"code": "{CODE}",
+				"message": "{MESSAGE}",
+			  }
+			}
+			""";
 
 		mockWebServer.enqueue(
 			new MockResponse()
@@ -199,6 +199,6 @@ class TossPaymentsGatewayTest {
 		assertNotNull(error, "에러가 null이면 안 됩니다.");
 		assertInstanceOf(TossApiException.class, error, "TossApiException이어야 합니다.");
 		assertTrue(error.getMessage().contains("토스 API 오류"));
-		assertTrue(((TossApiException) error).getResponseBody().contains("\"code\": \"{CODE}\""));
+		assertTrue(((TossApiException)error).getResponseBody().contains("\"code\": \"{CODE}\""));
 	}
 }
