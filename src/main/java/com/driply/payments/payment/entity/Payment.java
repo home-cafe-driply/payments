@@ -7,6 +7,8 @@ import java.util.Map;
 import org.hibernate.annotations.Type;
 
 import com.driply.payments.common.BaseEntity;
+import com.driply.payments.payment.dto.PGType;
+import com.driply.payments.payment.dto.PaymentStatus;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;

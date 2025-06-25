@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.driply.payments.payment.dto.PGType;
 import com.driply.payments.payment.dto.PaymentDetailsDTO;
 import com.driply.payments.payment.dto.TossWebhookEventType;
-import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.exception.PaymentCallbackException;
 import com.driply.payments.payment.exception.PaymentInconsistencyException;

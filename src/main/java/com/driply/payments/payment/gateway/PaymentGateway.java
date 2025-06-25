@@ -1,10 +1,10 @@
 package com.driply.payments.payment.gateway;
 
+import com.driply.payments.payment.dto.PaymentError;
 import com.driply.payments.payment.dto.PaymentQuery;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
+import com.driply.payments.payment.dto.PaymentStatus;
 import com.driply.payments.payment.dto.TossPaymentDetailsDTO;
-import com.driply.payments.payment.entity.PaymentError;
-import com.driply.payments.payment.entity.PaymentStatus;
 
 import reactor.core.publisher.Mono;
 

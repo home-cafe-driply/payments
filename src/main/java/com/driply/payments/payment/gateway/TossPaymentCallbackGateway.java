@@ -4,11 +4,11 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.driply.payments.payment.dto.PGType;
 import com.driply.payments.payment.dto.PaymentDetailsDTO;
 import com.driply.payments.payment.dto.PaymentQuery;
 import com.driply.payments.payment.dto.TossPaymentConsistencyCheckDTO;
 import com.driply.payments.payment.dto.TossPaymentDetailsDTO;
-import com.driply.payments.payment.entity.PGType;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.exception.PaymentCallbackException;
 import com.driply.payments.payment.exception.PaymentInconsistencyException;

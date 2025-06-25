@@ -5,8 +5,8 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.driply.payments.payment.dto.PGType;
 import com.driply.payments.payment.dto.TossPaymentRequestDTO;
-import com.driply.payments.payment.entity.PGType;
 
 @Component
 public class TossPaymentsRequestConverter implements PaymentRequestConverter<TossPaymentRequestDTO> {

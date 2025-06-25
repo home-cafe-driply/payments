@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.driply.payments.payment.entity.PGType;
+import com.driply.payments.payment.dto.PGType;
+import com.driply.payments.payment.dto.PaymentStatus;
 import com.driply.payments.payment.entity.Payment;
-import com.driply.payments.payment.entity.PaymentStatus;
 
 @SpringBootTest
 class PaymentRepositoryTest {

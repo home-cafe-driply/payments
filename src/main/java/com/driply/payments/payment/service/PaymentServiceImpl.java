@@ -9,12 +9,12 @@ import java.util.concurrent.Executors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.driply.payments.payment.dto.PGType;
 import com.driply.payments.payment.dto.PaymentDetailsDTO;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.dto.PaymentResultDTO;
-import com.driply.payments.payment.entity.PGType;
+import com.driply.payments.payment.dto.PaymentStatus;
 import com.driply.payments.payment.entity.Payment;
-import com.driply.payments.payment.entity.PaymentStatus;
 import com.driply.payments.payment.exception.NoSuchStatusException;
 import com.driply.payments.payment.exception.PaymentCallbackException;
 import com.driply.payments.payment.gateway.PaymentGateway;

@@ -1,4 +1,4 @@
-package com.driply.payments.payment.entity;
+package com.driply.payments.payment.dto;
 
 public enum PGType {
 	TOSS,

@@ -10,12 +10,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import com.driply.payments.payment.dto.PGType;
+import com.driply.payments.payment.dto.PaymentError;
 import com.driply.payments.payment.dto.PaymentQuery;
 import com.driply.payments.payment.dto.PaymentRequestDTO;
+import com.driply.payments.payment.dto.PaymentStatus;
 import com.driply.payments.payment.dto.TossPaymentDetailsDTO;
-import com.driply.payments.payment.entity.PGType;
-import com.driply.payments.payment.entity.PaymentError;
-import com.driply.payments.payment.entity.PaymentStatus;
 import com.driply.payments.payment.exception.TossApiException;
 import com.driply.payments.payment.exception.TossConnectionException;
 
