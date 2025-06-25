@@ -23,7 +23,7 @@ public class TossPaymentDetailsDTO extends PaymentDetailsDTO {
 	OffsetDateTime approvedAt;
 	boolean useEscrow;
 	boolean cultureExpense;
-	String card;
+	Map<String, Object> card;
 	String virtualAccount;
 	String transfer;
 	String mobilePhone;
