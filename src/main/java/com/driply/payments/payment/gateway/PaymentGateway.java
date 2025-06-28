@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
 
 public interface PaymentGateway {
 	// 결제 실행
-	void processPayment(PaymentRequestDTO requestDTO, long paymentId);
+	Mono<Void> processPayment(PaymentRequestDTO requestDTO, long paymentId);
 
 	// 결제 상세 조회
 	Mono<TossPaymentDetailsDTO> queryPayment(PaymentQuery query);

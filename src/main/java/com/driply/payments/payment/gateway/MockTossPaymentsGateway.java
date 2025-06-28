@@ -49,19 +49,16 @@ public class MockTossPaymentsGateway implements PaymentGateway {
 	 * @throws IllegalArgumentException 결제 요청 데이터가 유효하지 않은 경우
 	 */
 	@Override
-	public void processPayment(PaymentRequestDTO requestDTO, long paymentId) {
+	public Mono<Void> processPayment(PaymentRequestDTO requestDTO, long paymentId) {
 		validatePaymentRequest(requestDTO);
 
-		sendPaymentRequest(requestDTO)
+		return sendPaymentRequest(requestDTO)
 			.doOnSubscribe(sub -> log.info("결제 요청 시작됨: paymentId={}", paymentId))
 			.doOnSuccess(response ->
 				log.info("결제 요청 성공: paymentId={}", paymentId))
 			.doOnError(error ->
 				log.error("결제 요청 실패: paymentId={}", paymentId, error))
-			.subscribe(response -> {
-				},
-				error -> {
-				});
+			.then();
 	}
 
 	/**
