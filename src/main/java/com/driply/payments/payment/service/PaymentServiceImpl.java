@@ -53,7 +53,8 @@ public class PaymentServiceImpl implements PaymentService {
 		Long paymentId = savedPayment.getPaymentId();
 
 		try {
-			CompletableFuture.runAsync(() -> paymentGateway.processPayment(requestDTO, paymentId), paymentExecutor);
+			CompletableFuture.runAsync(() -> paymentGateway.processPayment(requestDTO, paymentId)
+				.subscribe(), paymentExecutor);
 
 			return PaymentResultDTO.builder()
 				.paymentId(savedPayment.getPaymentId())

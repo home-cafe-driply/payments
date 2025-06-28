@@ -5,29 +5,26 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.driply.payments.payment.dto.PaymentRequestDTO;
 import com.driply.payments.payment.dto.TossPaymentRequestDTO;
-import com.driply.payments.payment.exception.TossApiException;
+import com.driply.payments.payment.repository.PaymentRepository;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +32,7 @@ class TossPaymentsGatewayTest {
 
 	private MockWebServer mockWebServer;
 	private TossPaymentsGateway tossPaymentsGateway;
+	private PaymentRepository paymentRepository;
 
 	@BeforeEach
 	void setUp() throws IOException {
@@ -46,6 +44,7 @@ class TossPaymentsGatewayTest {
 			.build();
 
 		tossPaymentsGateway = new TossPaymentsGateway(webClient);
+		paymentRepository = mock(PaymentRepository.class);
 	}
 
 	@AfterEach
@@ -62,7 +61,7 @@ class TossPaymentsGatewayTest {
 	}
 
 	@Test
-	@DisplayName("결제 성공")
+	@DisplayName("payment success test")
 	void processPayment_success() throws Exception {
 		// 1. MockWebServer가 반환할 가짜 JSON 응답 준비
 		String response = """
@@ -123,27 +122,19 @@ class TossPaymentsGatewayTest {
 				.setBody(response)
 		);
 
-		// 3. mockLogger 생성 및 TossPaymentsGateway에 리플렉션으로 주입
-		Logger mockLogger = mock(Logger.class);
-		ReflectionTestUtils.setField(tossPaymentsGateway, "logger", mockLogger);
-
-		// 4. 결제 요청 DTO 생성
+		// 3. 결제 요청 DTO 생성
 		PaymentRequestDTO requestDTO = createValidPaymentRequest();
 		long paymentId = 1L;
 
-		// 5. 결제 처리 메서드 호출 (비동기적으로 HTTP 요청 발생)
-		tossPaymentsGateway.processPayment(requestDTO, paymentId);
+		// 3. 메서드 실행 및 결과 검증
+		StepVerifier.create(tossPaymentsGateway.processPayment(requestDTO, paymentId))
+			.verifyComplete(); // 정상 완료 시그널
 
-		// 6. MockWebServer에 실제로 요청이 들어왔는지 검증 (최대 5초 대기)
-		RecordedRequest recordedRequest = mockWebServer.takeRequest(5, TimeUnit.SECONDS);
+		// 4. MockWebServer에 실제로 요청이 들어왔는지 검증 (최대 5초 대기)
+		RecordedRequest recordedRequest = mockWebServer.takeRequest(3, TimeUnit.SECONDS);
 		assertNotNull(recordedRequest); // 요청이 들어왔는지 확인
 		assertEquals("POST", recordedRequest.getMethod()); // HTTP 메서드 검증
 		assertEquals("/v1/payments/confirm", recordedRequest.getPath()); // 요청 경로 검증
-
-		// 7. 로그 호출 순서 검증 (비동기 콜백 실행까지 최대 2초 기다림)
-		InOrder inOrder = inOrder(mockLogger);
-		inOrder.verify(mockLogger, timeout(2000)).info("결제 요청 시작됨: paymentId={}", 1L); // 먼저 호출되어야 함
-		inOrder.verify(mockLogger, timeout(2000)).info("결제 요청 성공: paymentId={}", 1L); // 그 다음 호출되어야 함
 	}
 
 	@Test
@@ -153,10 +144,10 @@ class TossPaymentsGatewayTest {
 		String response = """
 			{
 			  "version": "2022-11-16",
-			  "traceId": "{traceId}",
+			  "traceId": "test_trace_id",
 			  "error": {
-				"code": "{CODE}",
-				"message": "{MESSAGE}",
+				"code": "test_error_code",",
+				"message": "test_error_message",
 			  }
 			}
 			""";
@@ -168,37 +159,24 @@ class TossPaymentsGatewayTest {
 				.setBody(response)
 		);
 
-		// 2. 동기화 도구 준비
-		CountDownLatch latch = new CountDownLatch(1);
-		AtomicReference<Throwable> errorRef = new AtomicReference<>();
-
-		// 3. logger를 spy로 교체하여 error 호출 시 latch와 예외 저장
-		Logger spyLogger = spy(Logger.class);
-		ReflectionTestUtils.setField(tossPaymentsGateway, "logger", spyLogger);
-
-		doAnswer(invocation -> {
-			// error(String, Object, Throwable) 시그니처에 맞게 처리
-			Throwable error = invocation.getArgument(2, Throwable.class);
-			errorRef.set(error);
-			latch.countDown();
-			return null;
-		}).when(spyLogger).error(anyString(), anyLong(), any(Throwable.class));
-
-		// 4. 결제 요청 DTO 생성
+		// 2. 테스트용 요청 DTO
 		PaymentRequestDTO requestDTO = createValidPaymentRequest();
 		long paymentId = 1L;
 
-		// 5. 결제 처리 메서드 호출
-		tossPaymentsGateway.processPayment(requestDTO, paymentId);
+		// 3. 메서드 실행 및 결과 검증
+		Mono<Void> result = tossPaymentsGateway.processPayment(requestDTO, paymentId);
 
-		// 6. 비동기 콜백이 실행될 때까지 대기
-		assertTrue(latch.await(5, TimeUnit.SECONDS), "비동기 콜백이 호출되지 않았습니다.");
+		StepVerifier.create(result)
+			.expectErrorMatches(throwable ->
+				throwable.getMessage().contains("400") ||
+					throwable.getMessage().contains("test_error_message")
+			)
+			.verify();
 
-		// 7. 예외 객체 검증
-		Throwable error = errorRef.get();
-		assertNotNull(error, "에러가 null이면 안 됩니다.");
-		assertInstanceOf(TossApiException.class, error, "TossApiException이어야 합니다.");
-		assertTrue(error.getMessage().contains("토스 API 오류"));
-		assertTrue(((TossApiException)error).getResponseBody().contains("\"code\": \"{CODE}\""));
+		// 4. 실제로 HTTP 요청이 들어갔는지 검증
+		RecordedRequest recordedRequest = mockWebServer.takeRequest(3, TimeUnit.SECONDS);
+		assertNotNull(recordedRequest);
+		assertEquals("POST", recordedRequest.getMethod()); // HTTP 메서드 검증
+		assertEquals("/v1/payments/confirm", recordedRequest.getPath()); // 요청 경로 검증
 	}
 }
