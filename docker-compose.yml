@@ -28,6 +28,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - payment_data:/app/data
+    networks:
+      - payments-network
 
 volumes:
   postgres_data:
