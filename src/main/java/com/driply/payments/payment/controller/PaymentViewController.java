@@ -16,17 +16,17 @@ public class PaymentViewController {
 
 	@GetMapping("/api/v1/payment/success")
 	public Mono<Rendering> successPayment(ServerWebExchange exchange) {
-		return Mono.just(Rendering.view("/payment/success.html")
+		return Mono.just(Rendering.view("payment/success")
 			.modelAttribute("paymentType", exchange.getRequest().getQueryParams().getFirst("paymentType"))
 			.modelAttribute("orderId", exchange.getRequest().getQueryParams().getFirst("orderId"))
 			.modelAttribute("paymentKey", exchange.getRequest().getQueryParams().getFirst("paymentKey"))
 			.modelAttribute("amount", exchange.getRequest().getQueryParams().getFirst("amount"))
 			.build());
 	}
-	
+
 	@GetMapping("/api/v1/payment/fail")
 	public Mono<Rendering> failPayment(ServerWebExchange exchange) {
-		return Mono.just(Rendering.view("/fail.html")
+		return Mono.just(Rendering.view("fail")
 			.modelAttribute("code", exchange.getRequest().getQueryParams().getFirst("code"))
 			.modelAttribute("message", exchange.getRequest().getQueryParams().getFirst("message"))
 			.build());
