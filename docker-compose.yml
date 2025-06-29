@@ -33,3 +33,7 @@ volumes:
   postgres_data:
   kafka_data:
   payment_data:
+
+networks:
+  payments-network:
+    external: true
