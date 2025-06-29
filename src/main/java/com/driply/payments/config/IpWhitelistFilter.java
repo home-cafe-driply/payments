@@ -49,8 +49,6 @@ public class IpWhitelistFilter implements WebFilter {
 	);
 
 	private static final Set<String> PROTECTED_PATHS = Set.of(
-		"/api/v1/payment/confirm/payment",
-		"/api/v1/payment/confirm/widget",
 		"/api/v1/payment/callback"
 	);
 
