@@ -20,22 +20,40 @@ services:
 
   payments:
     image: havegrit/driply-payments:${IMAGE_TAG:-latest}
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/driply_dev
       SPRING_DATASOURCE_USERNAME: shin
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - payment_data:/app/data
-    networks:
-      - payments-network
+
+  nginx:
+    image: nginx:1.28.0
+    container_name: nginx
+    restart: always
+    volumes:
+      - /home/driply/reverse_proxy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /home/driply/reverse_proxy/nginx/conf.d:/etc/nginx/conf.d
+      - /home/driply/reverse_proxy/html:/usr/share/nginx/html
+      - /home/driply/reverse_proxy/certbot/www:/var/www/certbot
+      - /home/driply/reverse_proxy/certbot/conf:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - certbot
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - /home/driply/reverse_proxy/certbot/www:/var/www/certbot
+      - /home/driply/reverse_proxy/certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do sleep 1; done'"
 
 volumes:
   postgres_data:
   kafka_data:
   payment_data:
-
-networks:
-  payments-network:
-    external: true
