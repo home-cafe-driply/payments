@@ -1,0 +1,35 @@
+services:
+  postgres:
+    # ./postgres/Dockerfile 생성 필요
+    build: ../postgres
+    environment:
+      POSTGRES_USER: shin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: driply_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  kafka:
+    image: apache/kafka:3.9.1
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  payments:
+    image: havegrit/driply-payments:${IMAGE_TAG:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/driply_dev
+      SPRING_DATASOURCE_USERNAME: shin
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - payment_data:/app/data
+
+volumes:
+  postgres_data:
+  kafka_data:
+  payment_data:

@@ -224,3 +224,4 @@ gradle-app.setting
 
 ### custom ###
 application-secret.yml
+.env
