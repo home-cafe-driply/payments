@@ -57,3 +57,8 @@ volumes:
   postgres_data:
   kafka_data:
   payment_data:
+
+networks:
+  default:
+    name: payments-network
+    external: true
