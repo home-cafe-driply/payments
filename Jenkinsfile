@@ -10,10 +10,10 @@ pipeline {
     stages {
         stage('Generate .env') {
             steps {
-                sh """
-                    echo IMAGE_TAG=${IMAGE_TAG} > .env
-                    echo POSTGRES_PASSWORD=${POSTGRES_PASSWORD} > .env
-                """
+                sh '''
+                    echo IMAGE_TAG=$IMAGE_TAG > .env
+                    echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD > .env
+                '''
             }
         }
         stage('Checkout') {
