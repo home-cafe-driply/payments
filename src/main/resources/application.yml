@@ -4,6 +4,8 @@ spring:
   profiles:
     active: dev
     include: secret
+  kafka:
+    bootstrap-servers: kafka:9092
   cloud:
     stream:
       binders:
