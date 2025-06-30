@@ -4,7 +4,7 @@ pipeline {
         DOCKER_IMAGE = "havegrit/driply-payments"
         IMAGE_TAG = "v${BUILD_NUMBER}"
         DEPLOY_SERVER = "shin@${env.DEPLOY_SERVER_IP}"
-        COMPOSE_PATH = "/var/lib/jenkins/workspace/payments-deploy-test/docker-compose.yml"
+        COMPOSE_PATH = "/var/lib/jenkins/workspace/driply-payments/docker-compose.yml"
         POSTGRES_PASSWORD = credentials('postgres-password')
     }
     stages {
