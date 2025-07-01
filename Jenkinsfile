@@ -11,8 +11,8 @@ pipeline {
         stage('Generate .env') {
             steps {
                 sh '''
-                    echo IMAGE_TAG=$IMAGE_TAG > .env
-                    echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD > .env
+                    echo IMAGE_TAG=$IMAGE_TAG >> .env
+                    echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD >> .env
                 '''
             }
         }
