@@ -80,6 +80,11 @@ pipeline {
                 sh 'docker logout || true'
             }
         }
+        stage('Cleanup Docker Images') {
+            steps {
+                sh 'docker image prune -af --filter "until=24h"'
+            }
+        }
     }
     post {
         failure {
