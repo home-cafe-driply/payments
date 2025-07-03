@@ -1,6 +1,7 @@
 app:
   domain:
-    main: driply-coffee.shop
+    name: driply-coffee.shop
+    base-url: https://driply-coffee.shop
 spring:
   application:
     name: payments
@@ -28,7 +29,7 @@ spring:
           contentType: application/json
 security:
   protected:
-    path:
+    paths:
       - /api/v1/payment/callback
   proxy:
     hosts:

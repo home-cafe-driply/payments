@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,9 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+import com.driply.payments.common.ProxyIpResolver;
+
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -34,25 +38,21 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 public class IpWhitelistFilter implements WebFilter {
-	private static final Set<String> PROXY_IPS = Set.of("");
+	@Value("${security.proxy.hosts:}")
+	private Set<String> proxyHosts;
 
-	private static final Set<String> ALLOWED_IPS = Set.of(
-		"127.0.0.1",
-		"13.124.18.147",
-		"13.124.108.35",
-		"3.36.173.151",
-		"3.38.81.32",
-		"115.92.221.121",
-		"115.92.221.122",
-		"115.92.221.125",
-		"115.92.221.126",
-		"115.92.221.123",
-		"115.92.221.127"
-	);
+	@Value("${security.allowed.ips:}")
+	private Set<String> allowedIps;
 
-	private static final Set<String> PROTECTED_PATHS = Set.of(
-		"/api/v1/payment/callback"
-	);
+	@Value("${security.protected.paths:}")
+	private Set<String> protectedPaths;
+
+	private Set<String> proxyIps;
+
+	@PostConstruct
+	public void init() {
+		proxyIps = ProxyIpResolver.resolveProxyIps(proxyHosts.toArray(new String[0]));
+	}
 
 	/**
 	 * 보호된 경로에 대한 IP 기반 접근 제어를 수행하는 필터 메서드입니다.
@@ -66,7 +66,7 @@ public class IpWhitelistFilter implements WebFilter {
 	public Mono<Void> filter(ServerWebExchange exchange, @NonNull WebFilterChain chain) {
 		String path = exchange.getRequest().getPath().value();
 
-		if (!PROTECTED_PATHS.contains(path)) {
+		if (!protectedPaths.contains(path)) {
 			return chain.filter(exchange);
 		}
 
@@ -149,7 +149,7 @@ public class IpWhitelistFilter implements WebFilter {
 	 * @return IP가 프록시 목록에 포함되어 있으면 true, 그렇지 않으면 false
 	 */
 	private boolean isProxy(String remoteIp) {
-		return PROXY_IPS.contains(remoteIp);
+		return proxyIps.contains(remoteIp);
 	}
 
 	/**
@@ -159,6 +159,6 @@ public class IpWhitelistFilter implements WebFilter {
 	 * @return IP가 허용된 목록에 포함되어 있으면 true, 그렇지 않으면 false
 	 */
 	private boolean isAllowedIp(String ip) {
-		return ip != null && ALLOWED_IPS.contains(ip);
+		return ip != null && allowedIps.contains(ip);
 	}
 }

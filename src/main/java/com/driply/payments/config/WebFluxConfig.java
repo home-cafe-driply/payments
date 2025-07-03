@@ -13,10 +13,13 @@ public class WebFluxConfig implements WebFluxConfigurer {
 	@Value("${toss.payments.base-url}")
 	public String tossBaseUrl;
 
+	@Value("${app.domain.base-url}")
+	public String baseUrl;
+
 	@Override
 	public void addCorsMappings(CorsRegistry corsRegistry) {
 		corsRegistry.addMapping("/**")
-			.allowedOrigins("https://driply-coffee.shop")
+			.allowedOrigins(baseUrl)
 			.allowedMethods("GET", "POST", "PUT", "DELETE")
 			.allowedHeaders("Authorization", "Content-Type")
 			.allowCredentials(true)
