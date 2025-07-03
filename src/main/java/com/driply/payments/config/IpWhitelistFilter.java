@@ -15,15 +15,17 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 /**
- * 특정 API 경로에 대해 허용된 IP만 접근할 수 있도록 제한하는 화이트리스트 WebFilter입니다.
+ * 특정 API 경로에 대해 허용된 IP만 접근할 수 있도록 제한하는 {@link org.springframework.web.server.WebFilter} 구현 클래스입니다.
  * <p>
- * 지정된 경로(PROTECTED_PATHS)에 대한 요청이 들어올 때,
- * 1차로 실제 TCP 연결의 원격 IP가 허용 목록(ALLOWED_IPS)에 포함되어 있는지 확인합니다.
- * 만약 프록시 서버를 통한 접근이 예상되는 경우(PROXY_IPS에 해당 IP가 포함된 경우),
- * 2차로 X-Forwarded-For 헤더에서 추출한 원본 IP가 허용 목록에 포함되어 있는지 검사합니다.
- * <p>
- * 두 조건을 모두 만족하지 않으면 403 Forbidden 응답을 반환하며, 허용된 경우에만 다음 필터로 요청을 전달합니다.
- * <p>
+ * 지정된 보호 경로({@code PROTECTED_PATHS})에 대한 HTTP 요청이 발생할 경우,
+ * 요청자의 IP가 허용된 목록({@code ALLOWED_IPS})에 포함되어 있는지 검사합니다.
+ * <br>
+ * 프록시 서버({@code PROXY_IPS})를 경유한 요청의 경우, {@code X-Forwarded-For} 헤더에서 실제 클라이언트 IP를 추출하여 검증합니다.
+ * <br>
+ * 허용되지 않은 IP의 접근 시, HTTP 403 Forbidden 응답을 반환하며 접근을 차단합니다.
+ * <br>
+ * 그 외 경로에 대해서는 필터링 없이 체인을 그대로 통과시킵니다.
+ * </p>
  * <b>주의:</b> X-Forwarded-For 헤더는 신뢰할 수 없는 환경에서는 조작될 수 있으므로,
  * 반드시 신뢰할 수 있는 프록시 환경에서만 사용해야 합니다.
  *
@@ -53,13 +55,7 @@ public class IpWhitelistFilter implements WebFilter {
 	);
 
 	/**
-	 * 요청이 보호된 경로(PROTECTED_PATHS)에 해당하는 경우,
-	 * 허용된 IP(ALLOWED_IPS)인지 검증합니다.
-	 * <ul>
-	 *     <li>1차: 실제 TCP 연결된 IP가 허용 IP에 포함되는지 확인</li>
-	 *     <li>2차: 프록시 서버인 경우 X-Forwarded-For 헤더의 IP가 허용 IP에 포함되는지 확인</li>
-	 *     <li>둘 다 아니면 403 Forbidden 반환</li>
-	 * </ul>
+	 * 보호된 경로에 대한 IP 기반 접근 제어를 수행하는 필터 메서드입니다.
 	 *
 	 * @param exchange 요청 및 응답 정보를 담은 ServerWebExchange
 	 * @param chain    다음 WebFilterChain
@@ -69,30 +65,21 @@ public class IpWhitelistFilter implements WebFilter {
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange, @NonNull WebFilterChain chain) {
 		String path = exchange.getRequest().getPath().value();
-		if (PROTECTED_PATHS.contains(path)) {
-			String remoteIp = extractRemoteIp(exchange);
-			log.info("1차 검증 - 원격 IP: {}", remoteIp);
 
-			// 1차 검증: 직접 접속 IP 허용 여부
-			if (ALLOWED_IPS.contains(remoteIp)) {
-				return chain.filter(exchange);
-			}
-
-			// 2차 검증: 프록시 서버인 경우
-			if (PROXY_IPS.contains(remoteIp)) {
-				String xffIp = extractXFFHeader(exchange);
-				log.info("2차 검증 - XFF IP: {}", xffIp);
-
-				if (xffIp != null && ALLOWED_IPS.contains(xffIp)) {
-					return chain.filter(exchange);
-				}
-			}
-
-			log.warn("차단된 접근 - 원격 IP: {}", remoteIp);
-			exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
-			return exchange.getResponse().setComplete();
+		if (!PROTECTED_PATHS.contains(path)) {
+			return chain.filter(exchange);
 		}
-		return chain.filter(exchange);
+
+		String remoteIp = extractRemoteIp(exchange);
+		String targetIp = determineTargetIp(exchange, remoteIp);
+
+		if (isAllowedIp(targetIp)) {
+			return chain.filter(exchange);
+		}
+
+		log.warn("차단된 접근 - 원격 IP: {}", remoteIp);
+		exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+		return exchange.getResponse().setComplete();
 	}
 
 	/**
@@ -133,5 +120,45 @@ public class IpWhitelistFilter implements WebFilter {
 			.filter(ip -> !ip.isEmpty())
 			.findFirst()
 			.orElse("UNKNOWN");
+	}
+
+	/**
+	 * 요청이 프록시를 통해 온 것인지 직접 온 것인지 판단하여 검증할 대상 IP를 결정합니다.
+	 * 프록시 요청인 경우 X-Forwarded-For 헤더에서 클라이언트 IP를 추출하고,
+	 * 직접 요청인 경우 원격 IP를 그대로 사용합니다.
+	 *
+	 * @param exchange 요청 정보를 담은 ServerWebExchange 객체
+	 * @param remoteIp 요청자의 원격 IP 주소
+	 * @return 검증할 대상 IP 주소
+	 */
+	private String determineTargetIp(ServerWebExchange exchange, String remoteIp) {
+		if (isProxy(remoteIp)) {
+			String clientIp = extractXFFHeader(exchange);
+			log.info("프록시 요청 - Proxy IP: {}, Client IP(XFF): {}", remoteIp, clientIp);
+			return clientIp;
+		} else {
+			log.info("직접 요청 - Remote IP: {}", remoteIp);
+			return remoteIp;
+		}
+	}
+
+	/**
+	 * 주어진 IP 주소가 프록시 서버의 IP인지 확인합니다.
+	 *
+	 * @param remoteIp 확인할 원격 IP 주소
+	 * @return IP가 프록시 목록에 포함되어 있으면 true, 그렇지 않으면 false
+	 */
+	private boolean isProxy(String remoteIp) {
+		return PROXY_IPS.contains(remoteIp);
+	}
+
+	/**
+	 * 주어진 IP 주소가 허용된 IP 목록에 포함되어 있는지 확인합니다.
+	 *
+	 * @param ip 확인할 IP 주소
+	 * @return IP가 허용된 목록에 포함되어 있으면 true, 그렇지 않으면 false
+	 */
+	private boolean isAllowedIp(String ip) {
+		return ip != null && ALLOWED_IPS.contains(ip);
 	}
 }
