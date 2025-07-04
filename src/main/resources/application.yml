@@ -1,3 +1,7 @@
+app:
+  domain:
+    name: driply-coffee.shop
+    base-url: https://driply-coffee.shop
 spring:
   application:
     name: payments
@@ -19,8 +23,14 @@ spring:
           group: payment-callback-group
           binder: kafka-binder
           contentType: application/json
-
         producer-out-0:
           destination: payment-callback
           binder: kafka-binder
           contentType: application/json
+security:
+  protected:
+    paths:
+      - /api/v1/payment/callback
+  proxy:
+    hosts:
+      - nginx
