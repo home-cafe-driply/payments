@@ -1,59 +1,59 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.4.3'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.4.3'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.driply'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-webflux'
-	implementation 'org.springframework.boot:spring-boot-starter-aop'
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.4.3'
-	// data type define
-	implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.2'
-	implementation 'org.springframework.cloud:spring-cloud-stream:4.3.0'
-	implementation 'org.springframework.cloud:spring-cloud-stream-binder-kafka:4.3.0'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.4.3'
+    implementation 'org.postgresql:postgresql'
+    // data type define
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.2'
+    implementation 'org.springframework.cloud:spring-cloud-stream:4.3.0'
+    implementation 'org.springframework.cloud:spring-cloud-stream-binder-kafka:4.3.0'
 
-	compileOnly 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok'
 
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-	runtimeOnly 'org.postgresql:postgresql'
-	runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.2.1.Final:osx-aarch_64'
+    runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.2.1.Final:osx-aarch_64'
 
-	annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-	testImplementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.14'
-	testImplementation 'com.squareup.okhttp3:mockwebserver:5.0.0-alpha.14'
-	testImplementation 'io.projectreactor:reactor-test:3.8.0-M3'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.14'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:5.0.0-alpha.14'
+    testImplementation 'io.projectreactor:reactor-test:3.8.0-M3'
 
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
 
 /**
@@ -62,11 +62,11 @@ tasks.named('test') {
  * 테스트 실행 시 명시적으로 Java Agent를 로딩하도록 옵션을 추가하는 코드를 작성했다.
  */
 test {
-	doFirst {
-		def byteBuddyAgent = configurations.testRuntimeClasspath.find { it.name.contains('byte-buddy-agent') }
-		if (byteBuddyAgent == null) {
-			throw new GradleException("byte-buddy-agent jar not found in testRuntimeClasspath")
-		}
-		jvmArgs "-javaagent:${byteBuddyAgent.absolutePath}"
-	}
+    doFirst {
+        def byteBuddyAgent = configurations.testRuntimeClasspath.find { it.name.contains('byte-buddy-agent') }
+        if (byteBuddyAgent == null) {
+            throw new GradleException("byte-buddy-agent jar not found in testRuntimeClasspath")
+        }
+        jvmArgs "-javaagent:${byteBuddyAgent.absolutePath}"
+    }
 }
