@@ -11,8 +11,7 @@ pipeline {
         stage('Generate .env') {
             steps {
                 sh '''
-                    echo IMAGE_TAG=$IMAGE_TAG > .env
-                    echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD >> .env
+                    cp .env .env.backup
                     echo PROFILE=prod > .env
                     echo IMAGE_TAG=$IMAGE_TAG >> .env
                     echo DB_HOST=postgres >> .env
@@ -96,6 +95,7 @@ pipeline {
     }
     post {
         failure {
+            sh 'cp .env.backup .env'
             echo 'Pipeline failed!'
         }
     }
