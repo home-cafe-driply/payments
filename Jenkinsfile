@@ -13,6 +13,14 @@ pipeline {
                 sh '''
                     echo IMAGE_TAG=$IMAGE_TAG > .env
                     echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD >> .env
+                    echo PROFILE=prod > .env
+                    echo IMAGE_TAG=$IMAGE_TAG >> .env
+                    echo DB_HOST=postgres >> .env
+                    echo DB_NAME=driply_prod >> .env
+                    echo DB_USERNAME=shin >> .env
+                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .env
+                    echo KAFKA_HOST=kafka >> .env
+                    echo KAFKA_PORT=9092 >> .env
                 '''
             }
         }

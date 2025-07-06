@@ -3,20 +3,22 @@ app:
     name: driply-coffee.shop
     base-url: https://driply-coffee.shop
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: payments
   profiles:
-    active: dev
+    active: ${PROFILE}
     include: secret
   kafka:
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: ${KAFKA_HOST:localhost}:9092
   cloud:
     stream:
       binders:
         kafka-binder:
           type: kafka
           environment:
-            spring.cloud.stream.kafka.binder.brokers: kafka:9092
+            spring.cloud.stream.kafka.binder.brokers: ${KAFKA_HOST:localhost}:9092
       bindings:
         consumer-in-0:
           destination: payment-callback
