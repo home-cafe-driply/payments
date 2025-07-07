@@ -31,6 +31,8 @@ services:
     image: havegrit/driply-payments:${IMAGE_TAG:-latest}
     expose:
       - "8080"
+    env_file:
+      - .env
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-driply_dev}"
       SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-}"
