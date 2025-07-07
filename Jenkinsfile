@@ -39,6 +39,22 @@ pipeline {
                 }
             }
         }
+        stage('Check Postgres') {
+            steps {
+                sh '''
+                    echo "Checking Postgres..."
+                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
+                '''
+            }
+        }
+        stage('Check Kafka') {
+            steps {
+                sh '''
+                    echo "Checking Kafka..."
+                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
+                '''
+            }
+        }
         stage('Build') {
             steps {
                 sh './gradlew clean build'
@@ -55,22 +71,6 @@ pipeline {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                     sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
                 }
-            }
-        }
-        stage('Check Postgres') {
-            steps {
-                sh '''
-                    echo "Checking Postgres..."
-                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
-                '''
-            }
-        }
-        stage('Check Kafka') {
-            steps {
-                sh '''
-                    echo "Checking Kafka..."
-                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
-                '''
             }
         }
         stage('Deploy') {
