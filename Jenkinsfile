@@ -109,7 +109,7 @@ pipeline {
         }
     }
     post {
-        failure {
+      failure {
             sh '''
                 cp .env.backup .env
                 cp .test.env.backup .test.env
