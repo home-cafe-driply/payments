@@ -3,24 +3,24 @@ services:
     # ./postgres/Dockerfile 생성 필요
     build: ../postgres
     environment:
-      POSTGRES_USER: shin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      POSTGRES_DB: driply_dev
+      POSTGRES_USER: ${DB_USERNAME:-shin}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-}"
+      POSTGRES_DB: "${DB_NAME:-}"
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   kafka:
     image: apache/kafka:3.9.1
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT:-9092}:9092"
     environment:
       KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@${KAFKA_HOST:-localhost}:9093"
       KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://${KAFKA_HOST:-localhost}:9092"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -31,10 +31,12 @@ services:
     image: havegrit/driply-payments:${IMAGE_TAG:-latest}
     expose:
       - "8080"
+    env_file:
+      - .env
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/driply_dev
-      SPRING_DATASOURCE_USERNAME: shin
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-}
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-driply_dev}"
+      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD:-}"
     volumes:
       - payment_data:/app/data
 
@@ -43,11 +45,11 @@ services:
     container_name: nginx
     restart: always
     volumes:
-      - /home/driply/reverse_proxy/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - /home/driply/reverse_proxy/nginx/conf.d:/etc/nginx/conf.d
-      - /home/driply/reverse_proxy/html:/usr/share/nginx/html
-      - /home/driply/reverse_proxy/certbot/www:/var/www/certbot
-      - /home/driply/reverse_proxy/certbot/conf:/etc/letsencrypt
+      - ../reverse_proxy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../reverse_proxy/nginx/conf.d:/etc/nginx/conf.d
+      - ../reverse_proxy/html:/usr/share/nginx/html
+      - ../reverse_proxy/certbot/www:/var/www/certbot
+      - ../reverse_proxy/certbot/conf:/etc/letsencrypt
     ports:
       - "80:80"
       - "443:443"
@@ -58,8 +60,8 @@ services:
     image: certbot/certbot
     container_name: certbot
     volumes:
-      - /home/driply/reverse_proxy/certbot/www:/var/www/certbot
-      - /home/driply/reverse_proxy/certbot/conf:/etc/letsencrypt
+      - ../reverse_proxy/certbot/www:/var/www/certbot
+      - ../reverse_proxy/certbot/conf:/etc/letsencrypt
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do sleep 1; done'"
 
 volumes:
