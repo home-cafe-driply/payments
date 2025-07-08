@@ -11,7 +11,7 @@ pipeline {
         stage('Generate .env') {
             steps {
                 sh '''
-                    cp .env .env.backup
+                    cp .env .env.backup || touch .env.backup
                     echo PROFILE=prod > .env
                     echo IMAGE_TAG=$IMAGE_TAG >> .env
                     echo DB_HOST=postgres >> .env
@@ -20,6 +20,21 @@ pipeline {
                     echo DB_PASSWORD=$POSTGRES_PASSWORD >> .env
                     echo KAFKA_HOST=kafka >> .env
                     echo KAFKA_PORT=9092 >> .env
+                '''
+            }
+        }
+        stage('Generate .test.env') {
+            steps {
+                sh '''
+                    cp .test.env .test.env.backup || touch .test.env.backup
+                    echo PROFILE=test > .test.env
+                    echo IMAGE_TAG=$IMAGE_TAG >> .test.env
+                    echo DB_HOST=localhost >> .test.env
+                    echo DB_NAME=driply_test >> .test.env
+                    echo DB_USERNAME=shin >> .test.env
+                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .test.env
+                    echo KAFKA_HOST=localhost >> .test.env
+                    echo KAFKA_PORT=9092 >> .test.env
                 '''
             }
         }
@@ -94,8 +109,11 @@ pipeline {
         }
     }
     post {
-        failure {
-            sh 'cp .env.backup .env'
+      failure {
+            sh '''
+                cp .env.backup .env
+                cp .test.env.backup .test.env
+            '''
             echo 'Pipeline failed!'
         }
     }

@@ -5,6 +5,8 @@ app:
 spring:
   application:
     name: payments
+  config:
+    import: optional:file:.env[.properties]
   profiles:
     active: ${PROFILE}
     include: secret
