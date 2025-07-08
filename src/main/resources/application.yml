@@ -3,8 +3,6 @@ app:
     name: driply-coffee.shop
     base-url: https://driply-coffee.shop
 spring:
-  config:
-    import: optional:file:.env[.properties]
   application:
     name: payments
   profiles:
