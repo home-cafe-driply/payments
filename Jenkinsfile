@@ -7,35 +7,54 @@ pipeline {
         COMPOSE_PATH = "docker-compose.yml"
         POSTGRES_PASSWORD = credentials('postgres-password')
     }
-    stages {
-        stage('Generate .env') {
-            steps {
-                sh '''
-                    cp .env .env.backup || touch .env.backup
-                    echo PROFILE=prod > .env
-                    echo IMAGE_TAG=$IMAGE_TAG >> .env
-                    echo DB_HOST=postgres >> .env
-                    echo DB_NAME=driply_prod >> .env
-                    echo DB_USERNAME=shin >> .env
-                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .env
-                    echo KAFKA_HOST=kafka >> .env
-                    echo KAFKA_PORT=9092 >> .env
-                '''
-            }
-        }
-        stage('Generate .test.env') {
-            steps {
-                sh '''
-                    cp .test.env .test.env.backup || touch .test.env.backup
-                    echo PROFILE=test > .test.env
-                    echo IMAGE_TAG=$IMAGE_TAG >> .test.env
-                    echo DB_HOST=localhost >> .test.env
-                    echo DB_NAME=driply_test >> .test.env
-                    echo DB_USERNAME=shin >> .test.env
-                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .test.env
-                    echo KAFKA_HOST=localhost >> .test.env
-                    echo KAFKA_PORT=9092 >> .test.env
-                '''
+        stage('Parallel Setup') {
+            parallel {
+                stage('Generate Environment Files') {
+                    steps {
+                        script {
+                            // 공통 환경 변수 정의
+                            def commonEnvVars = [
+                                "IMAGE_TAG=${IMAGE_TAG}",
+                                "DB_HOST=postgres",
+                                "DB_USERNAME=shin",
+                                "DB_PASSWORD=${POSTGRES_PASSWORD}",
+                                "KAFKA_HOST=kafka",
+                                "KAFKA_PORT=9092"
+                            ]
+
+                            // .env 파일 생성
+                            sh 'cp .env .env.backup || touch .env.backup'
+                            writeFile
+                            file: '.env',
+                            text: """PROFILE=prod
+                            DB_NAME=driply_prod
+                            ${commonEnvVars.join('\n')}
+                            """
+
+                            // .test.env 파일 생성
+                            sh 'cp .test.env .test.env.backup || touch .test.env.backup'
+                            writeFile
+                            file: '.test.env',
+                            text: """PROFILE=test
+                            IMAGE_TAG=${IMAGE_TAG}
+                            DB_NAME=driply_test
+                            ${commonEnvVars.join('\n')}
+                            """
+                        }
+                    }
+                }
+
+                stage('Create Secret yml') {
+                    steps {
+                        sh 'rm -f src/main/resources/application-secret.yml'
+                        withCredentials([file(credentialsId: 'application-secret', variable: 'SECRET_YML')]) {
+                            sh '''
+                                cp $SECRET_YML src/main/resources/application-secret.yml
+                                chmod 600 src/main/resources/application-secret.yml
+                            '''
+                        }
+                    }
+                }
             }
         }
         stage('Checkout') {
@@ -54,20 +73,32 @@ pipeline {
                 }
             }
         }
-        stage('Check Postgres') {
-            steps {
-                sh '''
-                    echo "Checking Postgres..."
-                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
-                '''
-            }
-        }
-        stage('Check Kafka') {
-            steps {
-                sh '''
-                    echo "Checking Kafka..."
-                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
-                '''
+        stage('Health Checks') {
+            parallel {
+                stage('Check Postgres') {
+                    steps {
+                        script {
+                            retry(3) {
+                                sh '''
+                                    echo "Checking Postgres..."
+                                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('Check Kafka') {
+                    steps {
+                        script {
+                            retry(3) {
+                                sh '''
+                                    echo "Checking Kafka..."
+                                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
+                                '''
+                            }
+                        }
+                    }
+                }
             }
         }
         stage('Build') {
@@ -115,6 +146,13 @@ pipeline {
                 cp .test.env.backup .test.env
             '''
             echo 'Pipeline failed!'
+        }
+        success {
+            script {
+                sh '''
+                    rm -f .env.backup .test.env.backup
+                '''
+            }
         }
     }
 }
