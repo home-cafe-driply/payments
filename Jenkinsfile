@@ -136,19 +136,22 @@ pipeline {
                 """
             }
         }
-        stage('Logout') {
-            steps {
-                sh 'docker logout || true'
-            }
-        }
-        stage('Cleanup Docker Images') {
-            steps {
-                sh 'docker image prune -af --filter "until=24h"'
-            }
-        }
     }
     post {
-      failure {
+        always {
+            script {
+                sh 'docker logout || true'
+
+                sh '''
+                    # 사용하지 않는 이미지만 정리
+                    docker image prune -af --filter "until=24h"
+
+                    # 빌드 관련 임시 파일 정리
+                    docker builder prune -af --filter "until=24h"
+                '''
+            }
+        }
+        failure {
             sh '''
                 cp .env.backup .env
                 cp .test.env.backup .test.env
