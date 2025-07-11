@@ -6,7 +6,9 @@ pipeline {
         DEPLOY_SERVER = "shin@${env.DEPLOY_SERVER_IP}"
         COMPOSE_PATH = "docker-compose.yml"
         POSTGRES_PASSWORD = credentials('postgres-password')
+        DOCKER_BUILDKIT = "1"
     }
+    stages{
         stage('Parallel Setup') {
             parallel {
                 stage('Generate Environment Files') {
@@ -43,7 +45,6 @@ pipeline {
                         }
                     }
                 }
-
                 stage('Create Secret yml') {
                     steps {
                         sh 'rm -f src/main/resources/application-secret.yml'
@@ -106,16 +107,23 @@ pipeline {
                 sh './gradlew clean build'
             }
         }
-        stage('Build Image') {
+        stage('Build & Push Docker Image') {
             steps {
-                sh "docker buildx build --platform=linux/amd64 -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
-            }
-        }
-        stage('Push Image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+
+                        sh """
+                            docker buildx build \
+                                --platform=linux/amd64 \
+                                --cache-from=type=registry,ref=${DOCKER_IMAGE}:cache \
+                                --cache-to=type=registry,ref=${DOCKER_IMAGE}:cache,mode=max \
+                                --push \
+                                -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                                -t ${DOCKER_IMAGE}:latest \
+                                .
+                        """
+                    }
                 }
             }
         }
