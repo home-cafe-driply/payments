@@ -6,36 +6,57 @@ pipeline {
         DEPLOY_SERVER = "shin@${env.DEPLOY_SERVER_IP}"
         COMPOSE_PATH = "docker-compose.yml"
         POSTGRES_PASSWORD = credentials('postgres-password')
+        DOCKER_BUILDKIT = "1"
     }
-    stages {
-        stage('Generate .env') {
-            steps {
-                sh '''
-                    cp .env .env.backup || touch .env.backup
-                    echo PROFILE=prod > .env
-                    echo IMAGE_TAG=$IMAGE_TAG >> .env
-                    echo DB_HOST=postgres >> .env
-                    echo DB_NAME=driply_prod >> .env
-                    echo DB_USERNAME=shin >> .env
-                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .env
-                    echo KAFKA_HOST=kafka >> .env
-                    echo KAFKA_PORT=9092 >> .env
-                '''
-            }
-        }
-        stage('Generate .test.env') {
-            steps {
-                sh '''
-                    cp .test.env .test.env.backup || touch .test.env.backup
-                    echo PROFILE=test > .test.env
-                    echo IMAGE_TAG=$IMAGE_TAG >> .test.env
-                    echo DB_HOST=localhost >> .test.env
-                    echo DB_NAME=driply_test >> .test.env
-                    echo DB_USERNAME=shin >> .test.env
-                    echo DB_PASSWORD=$POSTGRES_PASSWORD >> .test.env
-                    echo KAFKA_HOST=localhost >> .test.env
-                    echo KAFKA_PORT=9092 >> .test.env
-                '''
+    stages{
+        stage('Parallel Setup') {
+            parallel {
+                stage('Generate Environment Files') {
+                    steps {
+                        script {
+                            // 공통 환경 변수 정의
+                            def commonEnvVars = [
+                                "IMAGE_TAG=${IMAGE_TAG}",
+                                'DB_PASSWORD=${POSTGRES_PASSWORD}'
+                            ]
+
+                            // .env 파일 생성
+                            sh 'cp .env .env.backup || touch .env.backup'
+                            writeFile(
+                            file: '.env',
+                            text: """PROFILE=prod
+                            DB_HOST=postgres,
+                            KAFKA_HOST=kafka,
+                            DB_NAME=driply_prod
+                            ${commonEnvVars.join('\n')}
+                            """
+                            )
+
+                            // .test.env 파일 생성
+                            sh 'cp .test.env .test.env.backup || touch .test.env.backup'
+                            writeFile(
+                            file: '.test.env',
+                            text: """PROFILE=test
+                            DB_HOST=localhost
+                            KAFKA_HOST=localhost
+                            DB_NAME=driply_test
+                            ${commonEnvVars.join('\n')}
+                            """
+                            )
+                        }
+                    }
+                }
+                stage('Create Secret yml') {
+                    steps {
+                        sh 'rm -f src/main/resources/application-secret.yml'
+                        withCredentials([file(credentialsId: 'application-secret', variable: 'SECRET_YML')]) {
+                            sh '''
+                                cp $SECRET_YML src/main/resources/application-secret.yml
+                                chmod 600 src/main/resources/application-secret.yml
+                            '''
+                        }
+                    }
+                }
             }
         }
         stage('Checkout') {
@@ -54,37 +75,64 @@ pipeline {
                 }
             }
         }
-        stage('Check Postgres') {
-            steps {
-                sh '''
-                    echo "Checking Postgres..."
-                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
-                '''
-            }
-        }
-        stage('Check Kafka') {
-            steps {
-                sh '''
-                    echo "Checking Kafka..."
-                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
-                '''
+        stage('Health Checks') {
+            parallel {
+                stage('Check Postgres') {
+                    steps {
+                        script {
+                            retry(3) {
+                                sh '''
+                                    echo "Checking Postgres..."
+                                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U shin
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('Check Kafka') {
+                    steps {
+                        script {
+                            retry(3) {
+                                sh '''
+                                    echo "Checking Kafka..."
+                                    docker compose -f ${COMPOSE_PATH} exec -T kafka nc -z localhost 9092
+                                '''
+                            }
+                        }
+                    }
+                }
             }
         }
         stage('Build') {
             steps {
-                sh './gradlew clean build'
+                script {
+                    sh '''
+                        ./gradlew clean build \
+                            --build-cache \
+                            --parallel \
+                            --daemon \
+                            --stacktrace
+                    '''
+                }
             }
         }
-        stage('Build Image') {
+        stage('Build & Push Docker Image') {
             steps {
-                sh "docker buildx build --platform=linux/amd64 -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
-            }
-        }
-        stage('Push Image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+
+                        sh """
+                            docker buildx build \
+                                --platform=linux/amd64 \
+                                --cache-from=type=registry,ref=${DOCKER_IMAGE}:cache \
+                                --cache-to=type=registry,ref=${DOCKER_IMAGE}:cache,mode=max \
+                                --push \
+                                -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                                -t ${DOCKER_IMAGE}:latest \
+                                .
+                        """
+                    }
                 }
             }
         }
@@ -97,24 +145,34 @@ pipeline {
                 """
             }
         }
-        stage('Logout') {
-            steps {
-                sh 'docker logout || true'
-            }
-        }
-        stage('Cleanup Docker Images') {
-            steps {
-                sh 'docker image prune -af --filter "until=24h"'
-            }
-        }
     }
     post {
-      failure {
+        always {
+            script {
+                sh 'docker logout || true'
+
+                sh '''
+                    # 사용하지 않는 이미지만 정리
+                    docker image prune -af --filter "until=24h"
+
+                    # 빌드 관련 임시 파일 정리
+                    docker builder prune -af --filter "until=24h"
+                '''
+            }
+        }
+        failure {
             sh '''
                 cp .env.backup .env
                 cp .test.env.backup .test.env
             '''
             echo 'Pipeline failed!'
+        }
+        success {
+            script {
+                sh '''
+                    rm -f .env.backup .test.env.backup
+                '''
+            }
         }
     }
 }

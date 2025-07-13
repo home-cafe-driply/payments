@@ -10,3 +10,12 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: create
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost}:9092
+  cloud:
+    stream:
+      binders:
+        kafka-binder:
+          type: kafka
+          environment:
+            spring.cloud.stream.kafka.binder.brokers: ${KAFKA_HOST:localhost}:9092
