@@ -3,7 +3,7 @@ services:
     # ./postgres/Dockerfile 생성 필요
     build: ../postgres
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-shin}
+      POSTGRES_USER: "${DB_USERNAME:-shin}"
       POSTGRES_PASSWORD: "${DB_PASSWORD:-}"
       POSTGRES_DB: "${DB_NAME:-}"
     ports:
@@ -35,7 +35,7 @@ services:
       - .env
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-driply_dev}"
-      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-}"
+      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-shin}"
       SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD:-}"
     volumes:
       - payment_data:/app/data
