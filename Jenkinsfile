@@ -104,7 +104,15 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh './gradlew clean build'
+                script {
+                    sh '''
+                        ./gradlew clean build \
+                            --build-cache \
+                            --parallel \
+                            --daemon \
+                            --stacktrace
+                    '''
+                }
             }
         }
         stage('Build & Push Docker Image') {
