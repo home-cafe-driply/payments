@@ -16,8 +16,7 @@ pipeline {
                         script {
                             // 공통 환경 변수 정의
                             def commonEnvVars = [
-                                "IMAGE_TAG=${IMAGE_TAG}",
-                                'DB_PASSWORD=${POSTGRES_PASSWORD}'
+                                "IMAGE_TAG=${IMAGE_TAG}"
                             ]
 
                             // .env 파일 생성
@@ -25,11 +24,11 @@ pipeline {
                             writeFile(
                             file: '.env',
                             text: """PROFILE=prod
-                            DB_HOST=postgres,
-                            KAFKA_HOST=kafka,
-                            DB_NAME=driply_prod
-                            ${commonEnvVars.join('\n')}
-                            """
+DB_HOST=postgres
+KAFKA_HOST=kafka
+DB_NAME=driply_prod
+${commonEnvVars.join('\n')}
+"""
                             )
 
                             // .test.env 파일 생성
@@ -37,12 +36,14 @@ pipeline {
                             writeFile(
                             file: '.test.env',
                             text: """PROFILE=test
-                            DB_HOST=localhost
-                            KAFKA_HOST=localhost
-                            DB_NAME=driply_test
-                            ${commonEnvVars.join('\n')}
-                            """
+DB_HOST=localhost
+KAFKA_HOST=localhost
+DB_NAME=driply_test
+${commonEnvVars.join('\n')}
+"""
                             )
+                            sh 'echo DB_PASSWORD=$POSTGRES_PASSWORD >> .env'
+                            sh 'echo DB_PASSWORD=$POSTGRES_PASSWORD >> .test.env'
                         }
                     }
                 }

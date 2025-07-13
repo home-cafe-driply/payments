@@ -3,7 +3,7 @@ services:
     # ./postgres/Dockerfile 생성 필요
     build: ../postgres
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-shin}
+      POSTGRES_USER: "${DB_USERNAME:-shin}"
       POSTGRES_PASSWORD: "${DB_PASSWORD:-}"
       POSTGRES_DB: "${DB_NAME:-}"
     ports:
@@ -18,9 +18,9 @@ services:
     environment:
       KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@${KAFKA_HOST:-localhost}:9093"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
       KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://${KAFKA_HOST:-localhost}:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -35,7 +35,7 @@ services:
       - .env
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-driply_dev}"
-      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-}"
+      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME:-shin}"
       SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD:-}"
     volumes:
       - payment_data:/app/data
