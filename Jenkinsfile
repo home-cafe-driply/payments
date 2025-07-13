@@ -17,31 +17,30 @@ pipeline {
                             // 공통 환경 변수 정의
                             def commonEnvVars = [
                                 "IMAGE_TAG=${IMAGE_TAG}",
-                                "DB_HOST=postgres",
-                                "DB_USERNAME=shin",
-                                "DB_PASSWORD=${POSTGRES_PASSWORD}",
-                                "KAFKA_HOST=kafka",
-                                "KAFKA_PORT=9092"
+                                'DB_PASSWORD=${POSTGRES_PASSWORD}'
                             ]
 
                             // .env 파일 생성
                             sh 'cp .env .env.backup || touch .env.backup'
-                            writeFile
+                            writeFile(
                             file: '.env',
                             text: """PROFILE=prod
+                            DB_HOST=postgres,
+                            KAFKA_HOST=kafka,
                             DB_NAME=driply_prod
                             ${commonEnvVars.join('\n')}
                             """
+                            )
 
                             // .test.env 파일 생성
                             sh 'cp .test.env .test.env.backup || touch .test.env.backup'
-                            writeFile
+                            writeFile(
                             file: '.test.env',
                             text: """PROFILE=test
-                            IMAGE_TAG=${IMAGE_TAG}
                             DB_NAME=driply_test
                             ${commonEnvVars.join('\n')}
                             """
+                            )
                         }
                     }
                 }
@@ -82,7 +81,7 @@ pipeline {
                             retry(3) {
                                 sh '''
                                     echo "Checking Postgres..."
-                                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U postgres
+                                    docker compose -f ${COMPOSE_PATH} exec -T postgres pg_isready -U shin
                                 '''
                             }
                         }
