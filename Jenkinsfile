@@ -37,6 +37,8 @@ pipeline {
                             writeFile(
                             file: '.test.env',
                             text: """PROFILE=test
+                            DB_HOST=localhost
+                            KAFKA_HOST=localhost
                             DB_NAME=driply_test
                             ${commonEnvVars.join('\n')}
                             """
