@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="https://static.toss.im/icons/png/4x/icon-toss-logo.png" />
-    <link rel="stylesheet" type="text/css" href="/style.css" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8"/>
+    <link rel="icon" href="https://static.toss.im/icons/png/4x/icon-toss-logo.png"/>
+    <link rel="stylesheet" type="text/css" href="/style.css"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>토스페이먼츠 샘플 프로젝트</title>
 </head>
 
 <body>
 <div class="box_section" style="width: 600px">
-    <img width="100px" src="https://static.toss.im/illusts/check-blue-spot-ending-frame.png" />
-    <h2>결제가 접수되었어요</h2>
+    <img width="100px" src="https://static.toss.im/illusts/check-blue-spot-ending-frame.png"/>
+    <h2 id="status-message">결제 승인을 요청하고 있어요...</h2>
 
     <div class="p-grid typography--p" style="margin-top: 50px">
         <div class="p-grid-col text--left"><b>결제금액</b></div>
@@ -27,63 +27,93 @@
         <div class="p-grid-col text--right" id="paymentKey" style="white-space: initial; width: 250px"></div>
     </div>
     <div class="p-grid" style="margin-top: 30px">
-        <button class="button p-grid-col5" onclick="location.href='https://docs.tosspayments.com/guides/v2/payment-widget/integration';">연동 문서</button>
-        <button class="button p-grid-col5" onclick="location.href='https://discord.gg/A4fRFXQhRu';" style="background-color: #e8f3ff; color: #1b64da">실시간 문의</button>
+        <button class="button p-grid-col5"
+                onclick="location.href='https://docs.tosspayments.com/guides/v2/payment-widget/integration';">연동 문서
+        </button>
+        <button class="button p-grid-col5" onclick="location.href='https://discord.gg/A4fRFXQhRu';"
+                style="background-color: #e8f3ff; color: #1b64da">실시간 문의
+        </button>
     </div>
 </div>
 
-<div class="box_section" style="width: 600px; text-align: left">
-    <b>Response Data :</b>
+<div class="box_section" style="width: 600px; text-align: left; display: none;" id="response-div">
+    <b>Final Result (from SSE) :</b>
     <div id="response" style="white-space: initial"></div>
 </div>
 
 <script>
-    // 쿼리 파라미터 값을 서버로 전달해 결제 요청할 때 보낸 데이터와 동일한지 반드시 확인하세요.
-    // 클라이언트에서 결제 금액을 조작하는 행위를 방지할 수 있습니다.
     const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get("orderId");
+    const amount = urlParams.get("amount");
+    const paymentKey = urlParams.get("paymentKey");
 
-    // 서버로 결제 승인에 필요한 결제 정보를 보내세요.
-    async function confirm() {
-      var requestData = {
-        paymentKey: urlParams.get("paymentKey"),
-        orderId: urlParams.get("orderId"),
-        amount: urlParams.get("amount"),
-      };
+    const statusMessage = document.getElementById("status-message");
+    document.getElementById("orderId").textContent = orderId;
+    document.getElementById("amount").textContent = amount + "원";
+    document.getElementById("paymentKey").textContent = paymentKey;
 
-      const response = await fetch("/api/v1/payment/confirm/payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-      });
+    async function confirmPayment() {
+        const requestData = {paymentKey, orderId, amount};
+        try {
+            const response = await fetch("/api/v1/payment/confirm/payment", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestData),
+            });
 
-      const json = await response.json();
-
-      if (!response.ok) {
-        throw { message: json.message, code: json.code };
-      }
-
-      return json;
+            if (!response.ok) {
+                const errorData = await response.json();
+                statusMessage.textContent = `결제 승인 요청 실패: ${errorData.message}`;
+                return false;
+            }
+            // 승인 요청이 성공적으로 '접수'되었음을 의미
+            statusMessage.textContent = "결제 승인 확인 중... 최종 결과를 기다려주세요.";
+            return true;
+        } catch (error) {
+            statusMessage.textContent = `결제 승인 요청 중 오류 발생: ${error.message}`;
+            return false;
+        }
     }
 
-    confirm()
-      .then(function (data) {
-        // TODO: 결제 승인에 성공했을 경우 UI 처리 로직을 구현하세요.
-        document.getElementById("response").innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
-      })
-      .catch((err) => {
-        // TODO: 결제 승인에 실패했을 경우 UI 처리 로직을 구현하세요.
-        window.location.href = `/api/v1/payment/fail?message=${err.message}&code=${err.code}`;
-      });
+    function subscribeToSse() {
+        if (!orderId) {
+            statusMessage.textContent = "주문번호를 찾을 수 없어 결과를 확인할 수 없습니다.";
+            return;
+        }
 
-    const paymentKeyElement = document.getElementById("paymentKey");
-    const orderIdElement = document.getElementById("orderId");
-    const amountElement = document.getElementById("amount");
+        const eventSource = new EventSource(`/api/v1/payments/subscribe/${orderId}`);
 
-    orderIdElement.textContent = urlParams.get("orderId");
-    amountElement.textContent = urlParams.get("amount") + "원";
-    paymentKeyElement.textContent = urlParams.get("paymentKey");
+        eventSource.onmessage = function (event) {
+            const result = JSON.parse(event.data);
+
+            if (result.success) {
+                statusMessage.textContent = "결제 승인이 완료되었어요";
+            } else {
+                statusMessage.textContent = "결제 승인에 실패했어요: " + result.message;
+            }
+
+            document.getElementById("response").innerHTML = `<pre>${JSON.stringify(result, null, 4)}</pre>`;
+            document.getElementById("response-div").style.display = "block";
+
+            eventSource.close();
+        };
+
+        eventSource.onerror = function (error) {
+            console.error("SSE Error:", error);
+            statusMessage.textContent = "결과 수신 중 오류가 발생했습니다. 페이지를 새로고침하여 다시 시도해주세요.";
+            eventSource.close();
+        };
+    }
+
+    (async () => {
+        const requestSent = await confirmPayment();
+        if (requestSent) {
+            subscribeToSse();
+        }
+    })();
+
 </script>
 </body>
 </html>

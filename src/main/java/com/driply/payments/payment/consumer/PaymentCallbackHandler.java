@@ -9,6 +9,8 @@ import org.springframework.util.StringUtils;
 
 import com.driply.payments.payment.dto.PGType;
 import com.driply.payments.payment.dto.PaymentDetailsDTO;
+import com.driply.payments.payment.dto.PaymentResultDTO;
+import com.driply.payments.payment.dto.PaymentStatus;
 import com.driply.payments.payment.dto.TossWebhookEventType;
 import com.driply.payments.payment.entity.Payment;
 import com.driply.payments.payment.exception.PaymentCallbackException;
@@ -16,6 +18,7 @@ import com.driply.payments.payment.exception.PaymentInconsistencyException;
 import com.driply.payments.payment.gateway.PaymentCallbackGateway;
 import com.driply.payments.payment.gateway.PaymentCallbackGatewayFactory;
 import com.driply.payments.payment.service.PaymentService;
+import com.driply.payments.payment.service.PaymentSseSinkManager;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -29,6 +32,7 @@ public class PaymentCallbackHandler {
 	private final ObjectMapper objectMapper;
 	private final PaymentCallbackGatewayFactory callbackGatewayFactory;
 	private final PaymentService paymentService;
+	private final PaymentSseSinkManager sseSinkManager;
 
 	/**
 	 * Kafka "payment-callback" 토픽에서 결제 콜백 메시지를 처리합니다.
@@ -64,6 +68,16 @@ public class PaymentCallbackHandler {
 			}
 
 			paymentService.updatePaymentStatus(payment, paymentDetailsDTO);
+
+			// SSE 이벤트 발생
+			PaymentResultDTO resultDTO = PaymentResultDTO.builder()
+				.paymentId(payment.getPaymentId())
+				.status(payment.getStatus())
+				.success(payment.getStatus() == PaymentStatus.PAID)
+				.message("결제 처리가 완료되었습니다.")
+				.build();
+			sseSinkManager.emit(payment.getOrderId(), resultDTO);
+
 		} catch (PaymentInconsistencyException e) {
 			log.error("결제 콜백 중 오류 발생: {}", e.getMessage());
 			throw new PaymentCallbackException("결제 콜백 중 에러 발생: " + e.getMessage());
